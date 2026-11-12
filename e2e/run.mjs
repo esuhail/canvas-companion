@@ -23,6 +23,8 @@ try {
   const worker = await browser.waitForTarget((t) => t.type() === 'service_worker' && t.url().startsWith('chrome-extension://'));
   const panelUrl = `chrome-extension://${new URL(worker.url()).host}/sidepanel.html`;
   const panel = await browser.newPage();
+  panel.on('pageerror', (e) => console.log('PAGE ERROR', e.message));
+  panel.on('console', (m) => m.type() === 'error' && console.log('CONSOLE', m.text()));
   await panel.setViewport({ width: 380, height: 760, deviceScaleFactor: 2 });
   await panel.goto(panelUrl);
   await panel.waitForSelector('#origin');
@@ -67,12 +69,24 @@ try {
   assert.match(rows[0], /^verified \| CS 310.*78\.0%.*C\+.*Verified: our calculation matches Canvas/);
   assert.match(rows[1], /^estimate \| CS 330.*≈ ?85\.0%.*Estimate.*hides the total/);
   assert.match(rows[2], /^reported \| MATH 203.*95\.0%.*We calculated 80\.0%.*Quizzes.*drops scores/);
+  // Solver on live data: HW 40% (90/100), Exams 60% (70/100 graded, 100 left).
+  const answer = () => panel.$eval('.course .answer', (e) => e.innerText);
+  assert.match(await answer(), /Out of reach.*1 ungraded item \(100 points\).*87\.0%/);
+  await panel.focus('#target-1');
+  await panel.$eval('#target-1', (e) => e.select());
+  await panel.type('#target-1', '80');
+  await panel.keyboard.press('Enter');
+  await panel.waitForFunction(() => /need an average/.test(document.querySelector('.course .answer').innerText));
+  assert.match(await answer(), /need an average of 76\.7% on the 1 ungraded item/);
+  assert.match(await panel.$$eval('.course .answer', (els) => els[2].innerText), /can’t reproduce/);
+  console.log('PASS solver answers on live data and refuses on an unreproduced course');
   await panel.screenshot({ path: 'e2e/shots/4-courses-live.png', fullPage: true });
   console.log('PASS verified, estimate and mismatch all come out of live data');
 
   // 4. The connection survives a reload, and Disconnect forgets it.
   await panel.reload();
-  await panel.waitForSelector('.course');
+  await panel.waitForSelector('.course .answer');
+  assert.equal(await panel.$eval('#target-1', (e) => e.value), '80', 'target was not remembered');
   await click(panel, 'Disconnect');
   await panel.waitForSelector('#origin');
   await panel.reload();

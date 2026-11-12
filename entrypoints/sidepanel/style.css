@@ -86,6 +86,27 @@ input {
 .track.estimate .pin { width: 8px; margin-left: -4px; background: var(--paper); border: 2px solid var(--estimate); border-radius: 3px; }
 .track.none { background: repeating-linear-gradient(-45deg, var(--mist) 0 4px, var(--line) 4px 5px); }
 
+.track .goal { position: absolute; top: -6px; width: 0; height: 20px; border-left: 2px dotted var(--cobalt); margin-left: -1px; z-index: 1; }
+
+/* Target: the question a student actually asks. One sentence answers it. */
+.target { grid-column: 1 / -1; margin-top: 12px; padding: 10px 12px; border-radius: 8px; background: color-mix(in srgb, var(--cobalt) 6%, var(--paper)); }
+.aim { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.aim label { margin: 0; font-weight: 550; }
+.aim .field { display: inline-flex; align-items: center; gap: 3px; }
+.aim input { width: 4.2em; padding: 4px 6px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.quick { display: inline-flex; margin-left: auto; }
+.quick button { padding: 3px 7px; font-variant-numeric: tabular-nums; }
+.quick button[aria-pressed='true'] { color: var(--cobalt); background: var(--paper); border-color: var(--cobalt); }
+.answer { margin: 8px 0 0; max-width: none; }
+.answer strong { font-variant-numeric: tabular-nums; font-weight: 650; }
+.target.out-of-reach .answer strong { color: var(--danger); }
+.target.secured .answer strong { color: var(--reported); }
+.target.unknown .answer { color: var(--slate); }
+.assume { margin-top: 6px; font-size: 0.86rem; color: var(--slate); }
+.assume summary { cursor: pointer; width: fit-content; border-radius: 4px; }
+.assume ul { margin: 4px 0 0; padding-left: 16px; }
+.key.goal { width: 0; border-left: 2px dotted var(--cobalt); border-radius: 0; margin: 0 3px; background: none; }
+
 .basis { grid-column: 1 / -1; margin: 8px 0 0; }
 .basis p { margin: 0; }
 .basis ul { margin: 2px 0 0; padding-left: 16px; }
