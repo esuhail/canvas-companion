@@ -269,6 +269,54 @@ summary:hover { text-decoration: underline; }
 .about { padding: 12px 16px 24px; font-size: 0.79rem; color: var(--slate); }
 .about button { display: block; padding: 4px 0; margin-top: 4px; color: var(--cobalt); font-size: inherit; border: 0; background: none; }
 
+/* ---- Grades tab refinements ---- */
+.total { flex-direction: row; align-items: baseline; gap: 8px; }
+.letter { font-size: 0.79rem; font-weight: 650; color: var(--slate); border: 1px solid var(--line); border-radius: var(--r-s); padding: 1px 6px; position: relative; top: -3px; }
+.track { height: 8px; border-radius: 4px; margin-top: 12px; }
+.track .fill { border-radius: 4px 0 0 4px; }
+.track .pin { height: 18px; top: -5px; }
+.track .goal { height: 20px; top: -6px; }
+.glance { margin-top: 10px; min-height: 22px; }
+.state { padding: 2px 9px; border-radius: 999px; background: var(--wash); font-size: 0.79rem; white-space: nowrap; }
+.state.verified { background: color-mix(in srgb, var(--reported) 13%, var(--paper)); }
+.state.estimate { background: color-mix(in srgb, var(--estimate) 14%, var(--paper)); }
+
+/* An open course lifts onto a tinted sheet; what sits inside goes back to the base surface. */
+.courses > .course { margin: 0 -8px; padding: 0 8px; transition: background var(--slow) var(--ease); }
+.courses > .course[data-open='true'] { border-radius: var(--r-m); background: var(--wash); border-top-color: transparent; margin-top: 4px; margin-bottom: 4px; }
+.courses > .course[data-open='true'] + .course { border-top-color: transparent; }
+.course[data-open='true'] .head:hover { background: none; }
+.course[data-open='true'] .track { background: var(--paper); }
+.course[data-open='true'] .track .tick { background: var(--wash); }
+.course[data-open='true'] .target { background: var(--paper); box-shadow: 0 0 0 1px var(--line); }
+.basis { font-size: 0.93rem; margin-top: 0; }
+
+/* The answer is the point of the box, so it is the largest thing in it. */
+.aim { font-size: 0.86rem; color: var(--slate); }
+.aim label { font-weight: 500; }
+.aim input { color: var(--ink); }
+.answer { font-size: 1.07rem; line-height: 1.4; margin-top: 10px; }
+.answer.weights { font-size: 0.93rem; }
+
+/* Sections open like a settings list: full-width rows, chevron on the right. */
+.plan > summary, .breakdown > summary, .syllabus > summary {
+  width: 100%; justify-content: space-between; padding: 10px 0; color: var(--ink); font-weight: 550; border-top: 1px solid var(--line);
+}
+.plan > summary::before, .breakdown > summary::before, .syllabus > summary::before { display: none; }
+.plan > summary::after, .breakdown > summary::after, .syllabus > summary::after {
+  content: ''; width: 6px; height: 6px; border-right: 1.5px solid var(--slate); border-bottom: 1.5px solid var(--slate);
+  transform: rotate(-45deg); transition: transform var(--fast) var(--ease); margin-right: 4px; flex: none;
+}
+.plan[open] > summary::after, .breakdown[open] > summary::after, .syllabus[open] > summary::after { transform: rotate(45deg); }
+.plan > summary:hover, .breakdown > summary:hover, .syllabus > summary:hover { text-decoration: none; color: var(--cobalt); }
+.plan { margin-top: 12px; }
+.breakdown, .syllabus { margin-top: 0; }
+.target + .breakdown > summary, .target + .syllabus > summary { border-top: 0; margin-top: 4px; }
+.assume { margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.79rem; }
+.legend li { padding: 0; gap: 6px; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; }
 }

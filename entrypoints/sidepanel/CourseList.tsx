@@ -286,10 +286,10 @@ function CourseRow({ course, r, target, onTarget, scenario, onScenario, syllabus
           {course.name !== course.code && <span className="name">{course.name}</span>}
         </span>
         <span className="total">
+          {letter && <span className="letter">{letter}</span>}
           {h.percent === null
             ? <span className="num none">–</span>
             : <span className="num">{h.basis === 'estimate' && <small className="approx">≈</small>}{fmt(h.percent)}<small>%</small></span>}
-          {letter && <span className="letter">{letter}</span>}
         </span>
         <span className={`track ${h.basis}`} aria-hidden="true">
           {TICKS.map((t) => <i key={t} className="tick" style={{ left: `${pos(t)}%` }} />)}
@@ -451,9 +451,9 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
         ))}
         {courses.length > 0 && (
           <ul className="legend">
-            <li><i className="key verified" />Verified: we calculated it and Canvas agrees</li>
-            <li><i className="key reported" />Reported by Canvas, not reproduced</li>
-            <li><i className="key estimate" />Estimate: nothing to check it against</li>
+            <li><i className="key verified" />Verified against Canvas</li>
+            <li><i className="key reported" />Reported only</li>
+            <li><i className="key estimate" />Estimate</li>
             <li><i className="key goal" />Your target</li>
           </ul>
         )}

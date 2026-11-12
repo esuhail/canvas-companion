@@ -83,7 +83,7 @@ try {
   await panel.waitForFunction(() => !/Checking the calculation/.test(document.body.innerText));
   const rows = await panel.$$eval('.course', (els) => els.map((e) => e.dataset.basis + ' | ' + e.innerText.replace(/\s+/g, ' ')));
   assert.equal(rows.length, 3);
-  assert.match(rows[0], /^verified \| CS 310.*78\.0%.*C\+.*Verified: our calculation matches Canvas/);
+  assert.match(rows[0], /^verified \| CS 310.*C\+.*78\.0%.*Verified: our calculation matches Canvas/);
   assert.match(rows[1], /^estimate \| CS 330.*≈ ?85\.0%.*Estimate.*hides the total/);
   assert.match(rows[2], /^verified \| MATH 203.*95\.0%.*Verified/); // lowest quiz dropped
   // Solver on live data: HW 40% (90/100), Exams 60% (70/100 graded, 100 left).
@@ -166,7 +166,12 @@ try {
   await panel.screenshot({ path: 'e2e/shots/5a-grades-collapsed.png', fullPage: true });
   await panel.$eval('.course .head', (e) => e.click());
   await new Promise((r) => setTimeout(r, 400));
+  await panel.$eval('.course .plan', (d) => { d.open = true; });
   await panel.screenshot({ path: 'e2e/shots/5-courses-sample.png', fullPage: true });
+  await panel.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+  await new Promise((r) => setTimeout(r, 500));
+  await panel.screenshot({ path: 'e2e/shots/5b-grades-dark.png', fullPage: true });
+  await panel.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
 
   // A newer build written to the extension folder is noticed without a manual reload.
   const manifestPath = path.join(EXT, 'manifest.json');
