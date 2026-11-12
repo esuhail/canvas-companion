@@ -23,6 +23,8 @@ export type Projection =
 export interface Details {
   remainingCount: number;
   remainingPoints: number;
+  /** Weighted groups with no items at all, counted as work still to come. */
+  emptyGroups: string[];
   assumptions: string[];
 }
 
@@ -39,6 +41,7 @@ interface Line { base: number; slope: number; details: Details }
 /** Builds final(p) = base + slope * p, with p in percent (0–100). */
 export function line(book: Gradebook): Line | { missing: string[] } {
   const assumptions = ['Canvas already lists every assignment that is still to come'];
+  const emptyGroups: string[] = [];
   let remainingCount = 0;
   let remainingPoints = 0;
   // Per group: earned so far, and possible points split into graded and remaining.
@@ -59,7 +62,7 @@ export function line(book: Gradebook): Line | { missing: string[] } {
       restPoints,
     };
   });
-  const details: Details = { remainingCount, remainingPoints, assumptions };
+  const details: Details = { remainingCount, remainingPoints, emptyGroups, assumptions };
 
   if (!book.weighted) {
     const earned = groups.reduce((s, g) => s + g.earned, 0);
@@ -83,6 +86,7 @@ export function line(book: Gradebook): Line | { missing: string[] } {
       // has not posted. It will count, so treat the whole group as remaining work.
       slope += g.weight / 100;
       somethingLeft = true;
+      emptyGroups.push(g.name);
       assumptions.push(`“${g.name}” (${round2(g.weight)}%) has no assignments in Canvas yet; assumed still to come`);
     }
     weightInPlay += g.weight;

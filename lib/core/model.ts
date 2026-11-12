@@ -32,6 +32,8 @@ export interface Assignment {
   countsTowardTotal: boolean;
   /** Submitted but waiting on manual grading (e.g. an essay question in a quiz). */
   pendingReview: boolean;
+  /** Added by the student because it is not in the LMS yet. */
+  planned?: boolean;
 }
 
 export interface AssignmentGroup {
