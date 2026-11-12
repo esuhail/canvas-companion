@@ -7,7 +7,7 @@ const a = (score: number | null, pointsPossible: number | null = 100, extra: Par
   id: String(++n), name: `A${n}`, pointsPossible, score, excused: false, countsTowardTotal: true, pendingReview: false, ...extra,
 });
 const g = (name: string, weight: number, assignments: Assignment[], extra: Partial<AssignmentGroup> = {}): AssignmentGroup => ({
-  id: name, name, weight, dropLowest: 0, dropHighest: 0, assignments, ...extra,
+  id: name, name, weight, dropLowest: 0, dropHighest: 0, neverDrop: [], assignments, ...extra,
 });
 const points = (...groups: AssignmentGroup[]): Gradebook => ({ weighted: false, groups });
 const weighted = (...groups: AssignmentGroup[]): Gradebook => ({ weighted: true, groups });
@@ -64,6 +64,47 @@ describe('weighted courses', () => {
   });
 });
 
+describe('drop rules', () => {
+  const pct = (book: Gradebook) => compute(book).percent;
+  it('drops the lowest score', () => {
+    expect(pct(points(g('Q', 0, [a(100), a(50), a(90)], { dropLowest: 1 })))).toBe(95);
+  });
+  it('drops the highest score', () => {
+    expect(pct(points(g('Q', 0, [a(100), a(50), a(90)], { dropHighest: 1 })))).toBe(70);
+  });
+  it('drops both ends', () => {
+    expect(pct(points(g('Q', 0, [a(100), a(50), a(90), a(80)], { dropLowest: 1, dropHighest: 1 })))).toBe(85);
+  });
+  it('never drops the only score', () => {
+    expect(pct(points(g('Q', 0, [a(40)], { dropLowest: 1 })))).toBe(40);
+    expect(pct(points(g('Q', 0, [a(40), a(90)], { dropLowest: 5 })))).toBe(90);
+  });
+  it('skips drop-highest when the two rules would leave nothing', () => {
+    expect(pct(points(g('Q', 0, [a(40), a(90)], { dropLowest: 1, dropHighest: 1 })))).toBe(90);
+  });
+  it('drops what helps the total most, not the lowest percent, when points differ', () => {
+    // 1/5 = 20% is the lowest percent, but dropping the 60/100 exam helps more:
+    // drop quiz -> 150/200 = 75; drop exam -> 91/105 = 86.67
+    expect(pct(points(g('Mixed', 0, [a(1, 5), a(60, 100), a(90, 100)], { dropLowest: 1 })))).toBe(86.67);
+  });
+  it('honours never-drop', () => {
+    const low = a(50);
+    expect(pct(points(g('Q', 0, [a(100), low, a(90)], { dropLowest: 1, neverDrop: [low.id] })))).toBe(75); // drops the 90
+  });
+  it('ignores ungraded items when choosing what to drop', () => {
+    expect(pct(points(g('Q', 0, [a(100), a(null), a(60)], { dropLowest: 1 })))).toBe(100);
+  });
+  it('applies inside a weighted group and reports the dropped count', () => {
+    const c = compute(weighted(g('Quizzes', 20, [a(10, 10), a(4, 10), a(9, 10)], { dropLowest: 1 }), g('Exams', 80, [a(78)])));
+    expect(c.percent).toBe(81.4); // 95*0.2 + 78*0.8
+    expect(c.groups[0]).toMatchObject({ gradedCount: 3, droppedCount: 1, earned: 19, possible: 20 });
+  });
+  it('verifies against a reported total that includes the drop', () => {
+    const book = points(g('Quizzes', 0, [a(100), a(50), a(90)], { dropLowest: 1 }));
+    expect(grade(book, { kind: 'reported', percent: 95, letter: null }).result.kind).toBe('verified');
+  });
+});
+
 describe('when no number can be given', () => {
   it('says nothing is graded', () => {
     const c = compute(points(g('HW', 0, [a(null), a(null)])));
@@ -93,25 +134,10 @@ describe('grade(): verified, estimate, mismatch, insufficient', () => {
     const r = grade(book, { kind: 'reported', percent: 81.5, letter: null }).result;
     expect(r).toMatchObject({ kind: 'mismatch', computed: 78, reported: 81.5 });
   });
-  it('names the drop rule as the likely cause of a mismatch', () => {
-    const dropping = points(g('Quizzes', 0, [a(100), a(50), a(90)], { dropLowest: 1 })); // ours 80, Canvas 95
-    const r = grade(dropping, { kind: 'reported', percent: 95, letter: null }).result;
-    expect(r.kind).toBe('mismatch');
-    expect(r.kind === 'mismatch' && r.hints[0]).toMatch(/Quizzes.*drops scores/);
-  });
-  it('still verifies when a drop rule exists but cannot bite yet', () => {
-    const early = points(g('Quizzes', 0, [a(80)], { dropLowest: 1 }));
-    expect(grade(early, { kind: 'reported', percent: 80, letter: null }).result.kind).toBe('verified');
-  });
   it('is an estimate with stated assumptions when the total is hidden', () => {
     const r = grade(book, { kind: 'hidden' }).result;
     expect(r).toMatchObject({ kind: 'estimate', percent: 78 });
     expect(r.kind === 'estimate' && r.assumptions).toHaveLength(1);
-  });
-  it('adds the ignored drop rule to an estimate’s assumptions', () => {
-    const dropping = points(g('Quizzes', 0, [a(100), a(50), a(90)], { dropLowest: 1 }));
-    const r = grade(dropping, { kind: 'hidden' }).result;
-    expect(r.kind === 'estimate' && r.assumptions).toHaveLength(2);
   });
   it('is insufficient when nothing is graded, whatever Canvas says', () => {
     expect(grade(points(g('HW', 0, [a(null)])), { kind: 'none' }).result.kind).toBe('insufficient');
@@ -120,4 +146,22 @@ describe('grade(): verified, estimate, mismatch, insufficient', () => {
     const lines = grade(book, { kind: 'hidden' }).groups;
     expect(lines.map((l) => [l.name, l.weight, l.percent, l.gradedCount])).toEqual([['HW', 40, 90, 1], ['Exams', 60, 70, 1]]);
   });
+});
+
+describe('drop-lowest picks the best possible set (checked by brute force)', () => {
+  // Small deterministic pseudo-random generator so failures are reproducible.
+  let seed = 7;
+  const rand = (n: number) => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % n; };
+  const subsets = <T,>(xs: T[], k: number): T[][] =>
+    k === 0 ? [[]] : xs.length < k ? [] : [...subsets(xs.slice(1), k - 1).map((s) => [xs[0] as T, ...s]), ...subsets(xs.slice(1), k)];
+  for (let trial = 0; trial < 40; trial++) {
+    const size = 3 + rand(4);
+    const drop = 1 + rand(2);
+    const items = Array.from({ length: size }, () => { const p = [5, 10, 20, 50, 100][rand(5)] as number; return a(rand(p + 1), p); });
+    it(`trial ${trial + 1}: ${size} items, drop ${drop}`, () => {
+      const best = Math.max(...subsets(items, size - drop).map((s) =>
+        s.reduce((t, x) => t + (x.score as number), 0) / s.reduce((t, x) => t + (x.pointsPossible as number), 0)));
+      expect(compute(points(g('G', 0, items, { dropLowest: drop }))).percent).toBe(round2(best * 100));
+    });
+  }
 });

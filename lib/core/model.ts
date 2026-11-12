@@ -41,6 +41,8 @@ export interface AssignmentGroup {
   weight: number;
   dropLowest: number;
   dropHighest: number;
+  /** Ids of assignments the instructor protected from being dropped. */
+  neverDrop: string[];
   assignments: Assignment[];
 }
 
@@ -75,6 +77,8 @@ export interface GroupLine {
   possible: number;
   percent: number | null;
   gradedCount: number;
+  /** Graded scores left out by the group's drop rule. */
+  droppedCount: number;
   totalCount: number;
 }
 

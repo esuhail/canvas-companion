@@ -23,14 +23,15 @@ export function resultsText(courses: Course[], reports: Record<string, Loaded>, 
     const res = r.result;
     const weights = r.groups.reduce((sum, g) => sum + (g.weight ?? 0), 0);
     const detail =
-      res.kind === 'mismatch' ? ` computed=${res.computed} reported=${res.reported} dropRule=${res.hints.some((h) => h.includes('drops'))}`
+      res.kind === 'mismatch' ? ` computed=${res.computed} reported=${res.reported}`
       : res.kind === 'insufficient' ? ` (${res.missing.join('; ')})`
       : '';
     const p = project(r.book, res, targetOf(c));
     const solver = p.kind === 'unknown' ? `unknown (${p.missing.join('; ')})`
       : `${p.kind}${p.kind === 'needed' ? ` avg=${p.average}` : p.kind === 'secured' ? ` floor=${p.floor}` : ` ceiling=${p.ceiling}`}` +
         ` remaining=${p.details.remainingCount} items/${p.details.remainingPoints} pts assumptions=${p.details.assumptions.length}`;
-    return `${head}: ${res.kind}${detail} groups=${r.groups.length} weightSum=${weights}\n  target ${targetOf(c)}: ${solver}`;
+    const dropped = r.groups.reduce((sum, g) => sum + g.droppedCount, 0);
+    return `${head}: ${res.kind}${detail} groups=${r.groups.length} weightSum=${weights} dropped=${dropped}\n  target ${targetOf(c)}: ${solver}`;
   }).join('\n');
 }
 
@@ -97,7 +98,7 @@ function Breakdown({ groups }: { groups: GroupLine[] }) {
             <tr key={g.id} className={g.percent === null ? 'empty' : undefined}>
               <th scope="row">
                 {g.name}
-                <span className="count">{g.gradedCount} of {g.totalCount} graded</span>
+                <span className="count">{g.gradedCount} of {g.totalCount} graded{g.droppedCount > 0 && `, ${g.droppedCount} dropped`}</span>
               </th>
               {weighted && <td className="r">{pts(g.weight ?? 0)}%</td>}
               <td className="r">{g.percent === null ? '–' : `${pts(g.earned)} / ${pts(g.possible)}`}</td>

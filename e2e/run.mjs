@@ -68,7 +68,7 @@ try {
   assert.equal(rows.length, 3);
   assert.match(rows[0], /^verified \| CS 310.*78\.0%.*C\+.*Verified: our calculation matches Canvas/);
   assert.match(rows[1], /^estimate \| CS 330.*≈ ?85\.0%.*Estimate.*hides the total/);
-  assert.match(rows[2], /^reported \| MATH 203.*95\.0%.*We calculated 80\.0%.*Quizzes.*drops scores/);
+  assert.match(rows[2], /^verified \| MATH 203.*95\.0%.*Verified/); // lowest quiz dropped
   // Solver on live data: HW 40% (90/100), Exams 60% (70/100 graded, 100 left).
   const answer = () => panel.$eval('.course .answer', (e) => e.innerText);
   assert.match(await answer(), /Out of reach.*1 ungraded item \(100 points\).*87\.0%/);
@@ -78,10 +78,9 @@ try {
   await panel.keyboard.press('Enter');
   await panel.waitForFunction(() => /need an average/.test(document.querySelector('.course .answer').innerText));
   assert.match(await answer(), /need an average of 76\.7% on the 1 ungraded item/);
-  assert.match(await panel.$$eval('.course .answer', (els) => els[2].innerText), /can’t reproduce/);
-  console.log('PASS solver answers on live data and refuses on an unreproduced course');
+  console.log('PASS solver answers on live data');
   await panel.screenshot({ path: 'e2e/shots/4-courses-live.png', fullPage: true });
-  console.log('PASS verified, estimate and mismatch all come out of live data');
+  console.log('PASS verified, estimate and a drop rule all come out of live data');
 
   // 4. The connection survives a reload, and Disconnect forgets it.
   await panel.reload();

@@ -43,7 +43,7 @@ export interface CanvasAssignmentGroup {
   id?: number | string;
   name?: string;
   group_weight?: number | null;
-  rules?: { drop_lowest?: number; drop_highest?: number } | null;
+  rules?: { drop_lowest?: number; drop_highest?: number; never_drop?: Array<number | string> } | null;
   assignments?: CanvasAssignment[];
 }
 
@@ -81,6 +81,7 @@ export function toGroup(g: CanvasAssignmentGroup): AssignmentGroup {
     weight: typeof g.group_weight === 'number' ? g.group_weight : 0,
     dropLowest: g.rules?.drop_lowest ?? 0,
     dropHighest: g.rules?.drop_highest ?? 0,
+    neverDrop: (g.rules?.never_drop ?? []).map(String),
     assignments: (g.assignments ?? []).map(toAssignment),
   };
 }

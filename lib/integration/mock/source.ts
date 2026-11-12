@@ -11,7 +11,7 @@ const a = (score: number | null, pointsPossible: number): Assignment => ({
   id: `a${++n}`, name: `Item ${n}`, pointsPossible, score, excused: false, countsTowardTotal: true, pendingReview: false,
 });
 const g = (name: string, weight: number, assignments: Assignment[], dropLowest = 0): AssignmentGroup => ({
-  id: name, name, weight, dropLowest, dropHighest: 0, assignments,
+  id: name, name, weight, dropLowest, dropHighest: 0, neverDrop: [], assignments,
 });
 
 const DATA: Array<{ course: Course; book: Gradebook }> = [
@@ -25,9 +25,9 @@ const DATA: Array<{ course: Course; book: Gradebook }> = [
       g('Final exam', 25, [a(null, 100)]),
     ] },
   },
-  { // verified, points-based: 294 / 390 = 75.38
+  { // reported, not reproduced: 294 / 390 = 75.38, but Canvas says 77.9 (as if the instructor overrode it)
     course: { id: 'm2', code: 'MATH 203', name: 'Linear Algebra', term: 'Sample term', weighted: false,
-      official: { kind: 'reported', percent: 75.38, letter: 'C' } },
+      official: { kind: 'reported', percent: 77.9, letter: 'C+' } },
     book: { weighted: false, groups: [
       g('Homework', 0, [a(45, 50), a(38, 50), a(41, 50)]),
       g('Quizzes', 0, [a(16, 20), a(12, 20)]),
@@ -42,7 +42,7 @@ const DATA: Array<{ course: Course; book: Gradebook }> = [
       g('Exams', 60, [a(81, 100), a(null, 100)]),
     ] },
   },
-  { // mismatch: Canvas drops the lowest quiz (86.2); slice 1 does not (82.53)
+  { // verified with a drop rule: lowest quiz (4/10) is dropped. 95*0.2 + 94*0.3 + 78*0.5 = 86.2
     course: { id: 'm4', code: 'STAT 344', name: 'Probability and Statistics for Engineers', term: 'Sample term', weighted: true,
       official: { kind: 'reported', percent: 86.2, letter: 'B' } },
     book: { weighted: true, groups: [

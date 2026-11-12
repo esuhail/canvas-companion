@@ -8,7 +8,7 @@ const a = (score: number | null, pointsPossible: number | null = 100, extra: Par
   id: String(++n), name: `A${n}`, pointsPossible, score, excused: false, countsTowardTotal: true, pendingReview: false, ...extra,
 });
 const g = (name: string, weight: number, assignments: Assignment[], extra: Partial<AssignmentGroup> = {}): AssignmentGroup => ({
-  id: name, name, weight, dropLowest: 0, dropHighest: 0, assignments, ...extra,
+  id: name, name, weight, dropLowest: 0, dropHighest: 0, neverDrop: [], assignments, ...extra,
 });
 const points = (...groups: AssignmentGroup[]): Gradebook => ({ weighted: false, groups });
 const weighted = (...groups: AssignmentGroup[]): Gradebook => ({ weighted: true, groups });
@@ -84,10 +84,12 @@ describe('weighted', () => {
   it('is unknown when no group has weight', () => {
     expect(solve(weighted(g('A', 0, [a(null)])), 90).kind).toBe('unknown');
   });
-  it('notes an ignored drop rule', () => {
-    const book = weighted(g('Quizzes', 100, [a(90), a(null)], { dropLowest: 1 }));
+  it('starts from the post-drop grade and says how drops are treated', () => {
+    // Lowest of 100/50/90 is dropped today: 190/200 graded, 100 left. For 90: (270-190)/100 = 80.
+    const book = points(g('Quizzes', 0, [a(100), a(50), a(90), a(null)], { dropLowest: 1 }));
     const p = solve(book, 90);
-    expect(p.kind !== 'unknown' && p.details.assumptions.some((s) => s.includes('drops scores'))).toBe(true);
+    expect(p).toMatchObject({ kind: 'needed', average: 80 });
+    expect(p.kind === 'needed' && p.details.assumptions.some((s) => s.includes('drops scores'))).toBe(true);
   });
 });
 

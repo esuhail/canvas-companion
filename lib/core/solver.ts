@@ -1,4 +1,4 @@
-import { counts, round2 } from './engine';
+import { counts, keptGraded, round2 } from './engine';
 import type { Assignment, Gradebook, GradeResult } from './model';
 
 /**
@@ -43,13 +43,13 @@ export function line(book: Gradebook): Line | { missing: string[] } {
   let remainingPoints = 0;
   // Per group: earned so far, and possible points split into graded and remaining.
   const groups = book.groups.map((g) => {
-    const graded = g.assignments.filter(counts);
+    const graded = keptGraded(g);
     const rest = g.assignments.filter(remaining);
     remainingCount += rest.length;
     const restPoints = rest.reduce((s, a) => s + (a.pointsPossible as number), 0);
     remainingPoints += restPoints;
-    if (g.dropLowest + g.dropHighest > 0 && graded.length + rest.length > g.dropLowest + g.dropHighest) {
-      assumptions.push(`Ignores the rule that drops scores in “${g.name}”, so you may need a little less`);
+    if (g.dropLowest + g.dropHighest > 0 && rest.length > 0) {
+      assumptions.push(`“${g.name}” drops scores: what is dropped today stays dropped, and no future score is assumed dropped, so you may need a little less`);
     }
     return {
       name: g.name,

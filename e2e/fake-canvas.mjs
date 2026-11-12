@@ -21,7 +21,7 @@ export function startFakeCanvas() {
         { id: 12, name: 'Exams', group_weight: 60, rules: {}, assignments: [item(102, 70, 100), item(103, null, 100)] }],
     // hidden total: 17/20 = 85 -> estimate
     2: [{ id: 21, name: 'Assignments', group_weight: 0, rules: {}, assignments: [item(201, 17, 20)] }],
-    // Canvas drops the lowest quiz (95); slice 1 gives 80 -> mismatch
+    // Canvas drops the lowest quiz: 190/200 = 95 -> verified
     3: [{ id: 31, name: 'Quizzes', group_weight: 0, rules: { drop_lowest: 1 }, assignments: [item(301, 100, 100), item(302, 50, 100), item(303, 90, 100)] }],
   };
   const server = http.createServer((req, res) => {

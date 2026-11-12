@@ -8,7 +8,7 @@ describe('sample data runs through the real engine', () => {
     const courses = await mockSource.listCourses();
     const kinds = [];
     for (const c of courses) kinds.push(grade(await mockSource.getGradebook(c), c.official).result.kind);
-    expect(kinds).toEqual(['verified', 'verified', 'estimate', 'mismatch', 'insufficient']);
+    expect(kinds).toEqual(['verified', 'mismatch', 'estimate', 'verified', 'insufficient']);
   });
 });
 
@@ -29,7 +29,7 @@ describe('assignment mapping', () => {
   });
   it('reads group weight and drop rules, defaulting to none', () => {
     expect(toGroup({ id: 3, name: 'Quizzes', group_weight: 20, rules: { drop_lowest: 1 }, assignments: [] }))
-      .toEqual({ id: '3', name: 'Quizzes', weight: 20, dropLowest: 1, dropHighest: 0, assignments: [] });
+      .toEqual({ id: '3', name: 'Quizzes', weight: 20, dropLowest: 1, dropHighest: 0, neverDrop: [], assignments: [] });
     expect(toGroup({})).toMatchObject({ weight: 0, dropLowest: 0, dropHighest: 0, assignments: [] });
   });
 });
