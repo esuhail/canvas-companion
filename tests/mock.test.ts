@@ -15,7 +15,8 @@ describe('sample data runs through the real engine', () => {
 describe('assignment mapping', () => {
   it('reads a graded submission', () => {
     expect(toAssignment({ id: 9, name: 'HW 1', points_possible: 20, submission: { score: 18, workflow_state: 'graded' } }))
-      .toEqual({ id: '9', name: 'HW 1', pointsPossible: 20, score: 18, excused: false, countsTowardTotal: true, pendingReview: false });
+      .toEqual({ id: '9', name: 'HW 1', pointsPossible: 20, score: 18, excused: false, countsTowardTotal: true, pendingReview: false,
+        dueAt: null, submitted: false, url: undefined });
   });
   it('keeps a missing or unposted score as null, not zero', () => {
     expect(toAssignment({ id: 1, points_possible: 20 }).score).toBeNull();
@@ -26,6 +27,11 @@ describe('assignment mapping', () => {
     expect(toAssignment({ grading_type: 'not_graded' }).countsTowardTotal).toBe(false);
     expect(toAssignment({ submission: { excused: true } }).excused).toBe(true);
     expect(toAssignment({ submission: { workflow_state: 'pending_review', score: 5 } }).pendingReview).toBe(true);
+  });
+  it('reads due date, submitted state and a safe link', () => {
+    const x = toAssignment({ id: 1, due_at: '2026-12-01T04:59:00Z', html_url: 'https://canvas.example.edu/courses/1/assignments/1', submission: { submitted_at: '2026-11-30T00:00:00Z' } });
+    expect(x).toMatchObject({ dueAt: '2026-12-01T04:59:00Z', submitted: true, url: 'https://canvas.example.edu/courses/1/assignments/1' });
+    expect(toAssignment({ html_url: 'javascript:alert(1)' }).url).toBeUndefined();
   });
   it('reads group weight and drop rules, defaulting to none', () => {
     expect(toGroup({ id: 3, name: 'Quizzes', group_weight: 20, rules: { drop_lowest: 1 }, assignments: [] }))

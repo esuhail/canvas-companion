@@ -34,6 +34,12 @@ export interface Assignment {
   pendingReview: boolean;
   /** Added by the student because it is not in the LMS yet. */
   planned?: boolean;
+  /** ISO timestamp, or null/undefined when the instructor set no due date. */
+  dueAt?: string | null;
+  /** The student has handed it in (graded or not). */
+  submitted?: boolean;
+  /** Link to the item in the LMS. */
+  url?: string;
 }
 
 export interface AssignmentGroup {

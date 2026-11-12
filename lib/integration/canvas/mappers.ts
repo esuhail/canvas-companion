@@ -51,12 +51,15 @@ export interface CanvasAssignment {
   id?: number | string;
   name?: string;
   points_possible?: number | null;
+  due_at?: string | null;
+  html_url?: string;
   omit_from_final_grade?: boolean;
   grading_type?: string;
   submission?: {
     score?: number | null;
     excused?: boolean | null;
     workflow_state?: string;
+    submitted_at?: string | null;
   } | null;
 }
 
@@ -71,6 +74,9 @@ export function toAssignment(a: CanvasAssignment): Assignment {
     excused: sub.excused === true,
     countsTowardTotal: a.omit_from_final_grade !== true && a.grading_type !== 'not_graded',
     pendingReview: sub.workflow_state === 'pending_review',
+    dueAt: a.due_at ?? null,
+    submitted: Boolean(sub.submitted_at) || sub.workflow_state === 'submitted' || sub.workflow_state === 'pending_review',
+    url: typeof a.html_url === 'string' && /^https?:\/\//.test(a.html_url) ? a.html_url : undefined,
   };
 }
 
