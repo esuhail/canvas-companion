@@ -29,6 +29,8 @@ export interface Queue {
   items: QueueItem[];
   /** Open items left out because the instructor gave them no due date. */
   undated: number;
+  /** Those same items, so they can still be seen. Largest share of the grade first. */
+  undatedItems: Array<Pick<QueueItem, 'courseId' | 'courseCode' | 'assignmentId' | 'name' | 'impact' | 'url'>>;
   /** Open items due later than the window. */
   later: number;
   /** Past due with nothing left to do: waiting on a grade (on paper, in class, or not flagged missing). */
@@ -83,6 +85,7 @@ export function buildQueue(
 ): Queue {
   const items: QueueItem[] = [];
   const done: QueueItem[] = [];
+  const undatedItems: Queue['undatedItems'] = [];
   let undated = 0;
   let later = 0;
   let awaiting = 0;
@@ -92,9 +95,13 @@ export function buildQueue(
       for (const a of g.assignments) {
         // Open = will count, not graded, and not handed in yet.
         if (!remaining(a) || a.submitted || a.planned) continue;
-        if (!a.dueAt) { undated++; continue; }
-        const due = Date.parse(a.dueAt);
-        if (!Number.isFinite(due)) { undated++; continue; }
+        const due = a.dueAt ? Date.parse(a.dueAt) : NaN;
+        if (!Number.isFinite(due)) {
+          if (marked.has(doneKey(course.id, a.id))) continue;
+          undated++;
+          undatedItems.push({ courseId: course.id, courseCode: course.code, assignmentId: a.id, name: a.name, impact: impactOf(book, gi, a), url: a.url });
+          continue;
+        }
         const daysLeft = (due - now.getTime()) / DAY;
         if (daysLeft > WINDOW_DAYS) { later++; continue; }
         if (closedUnsubmitted(a, now)) { closed++; continue; }
@@ -103,7 +110,7 @@ export function buildQueue(
         if (daysLeft < 0 && (a.expectsSubmission === false || a.missing === false)) { awaiting++; continue; }
         const impact = impactOf(book, gi, a);
         const item: QueueItem = {
-          courseId: course.id, courseCode: course.code, assignmentId: a.id, name: a.name, dueAt: a.dueAt,
+          courseId: course.id, courseCode: course.code, assignmentId: a.id, name: a.name, dueAt: a.dueAt as string,
           daysLeft, impact, overdue: daysLeft < 0, priority: priorityOf(impact, daysLeft), url: a.url,
         };
         // Canvas cannot know about work handed in on paper or elsewhere. The student can say so.
@@ -113,7 +120,8 @@ export function buildQueue(
   }
   items.sort((x, y) => y.priority - x.priority || x.daysLeft - y.daysLeft);
   done.sort((x, y) => x.daysLeft - y.daysLeft);
-  return { items, undated, later, awaiting, closed, done };
+  undatedItems.sort((x, y) => (y.impact ?? 0) - (x.impact ?? 0));
+  return { items, undated, undatedItems, later, awaiting, closed, done };
 }
 
 /** "Overdue by 2 days", "Due in 5 hours", "Due tomorrow", "Due in 6 days". */

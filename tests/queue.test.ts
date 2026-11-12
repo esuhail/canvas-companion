@@ -55,6 +55,9 @@ describe('buildQueue', () => {
     expect(q.items.map((i) => i.assignmentId).sort()).toEqual(['exam-next-week', 'overdue-quiz', 'tiny-tomorrow']);
     expect(q).toMatchObject({ undated: 1, later: 1, awaiting: 0, closed: 0 });
   });
+  it('keeps undated work visible, biggest first', () => {
+    expect(q.undatedItems.map((i) => [i.assignmentId, i.impact])).toEqual([['no-date', 6.4]]); // 40% group, 20 of its 125 listed points
+  });
   it('ranks overdue first, then weighs impact against time', () => {
     expect(q.items.map((i) => i.assignmentId)).toEqual(['overdue-quiz', 'exam-next-week', 'tiny-tomorrow']);
   });

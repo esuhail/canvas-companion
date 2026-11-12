@@ -6,6 +6,7 @@ import { CanvasSessionSource } from '@/lib/integration/canvas/source';
 import { extensionTransport, tabTransport } from '@/lib/integration/canvas/transport';
 import { mockSource } from '@/lib/integration/mock/source';
 import type { CourseDataSource } from '@/lib/integration/source';
+import { newerBuildOnDisk } from '@/lib/devUpdate';
 import { clearConnection, loadConnection, saveConnection, type Connection } from '@/lib/settings';
 import { AccessReport } from './AccessReport';
 import { CourseList } from './CourseList';
@@ -33,6 +34,15 @@ export function App() {
       setView(origin ? { name: 'failed', origin, failure } : { name: 'connect' });
     }
   }
+
+  // Unpacked installs: pick up a newer build without a trip to chrome://extensions.
+  const [newBuild, setNewBuild] = useState(false);
+  useEffect(() => {
+    // On open, switch to the newer build straight away. While open, offer it instead of interrupting.
+    void newerBuildOnDisk().then((newer) => { if (newer) chrome.runtime.reload(); });
+    const timer = setInterval(() => void newerBuildOnDisk().then(setNewBuild), 20_000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     loadConnection().then((c) => (c ? open(sourceFor(c), c.origin) : setView({ name: 'connect' })));
@@ -66,6 +76,18 @@ export function App() {
     setView({ name: 'connect' });
   }
 
+  if (newBuild) {
+    return (
+      <main className="sheet">
+        <h1>A newer build is ready</h1>
+        <p>The extension folder was updated. Switching closes this panel; open it again from the toolbar.</p>
+        <div className="actions">
+          <button className="primary" onClick={() => chrome.runtime.reload()}>Switch to the new build</button>
+          <button onClick={() => setNewBuild(false)}>Not now</button>
+        </div>
+      </main>
+    );
+  }
   switch (view.name) {
     case 'loading':
       return <p className="status" role="status">Loading…</p>;

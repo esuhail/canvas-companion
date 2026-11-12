@@ -1,6 +1,7 @@
 // End-to-end check of milestone 1: loads the built extension in real Chrome and
 // proves that extension code can read a cookie-only Canvas, signed out and signed in.
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer-core';
 import { startFakeCanvas } from './fake-canvas.mjs';
@@ -155,6 +156,14 @@ try {
   await click(panel, 'Grades');
   await panel.waitForSelector('.course');
   await panel.screenshot({ path: 'e2e/shots/5-courses-sample.png', fullPage: true });
+
+  // A newer build written to the extension folder is noticed without a manual reload.
+  const manifestPath = path.join(EXT, 'manifest.json');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  fs.writeFileSync(manifestPath, JSON.stringify({ ...manifest, version_name: manifest.version_name + ' next' }));
+  await panel.waitForFunction(() => /A newer build is ready/.test(document.body.innerText), { timeout: 30000 });
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+  console.log('PASS a newer build on disk is detected');
 
   // 6. What reached the server: GET only, no Authorization header, allowlisted API paths only.
   const api = canvas.log.filter((r) => r.path.startsWith('/api/'));

@@ -79,6 +79,22 @@ export function UpNext({ entries, loading, done, onDone }: {
           ))}
         </ol>
       )}
+      {q.undatedItems.length > 0 && (
+        <details className="donelist undated">
+          <summary>No due date ({q.undatedItems.length})</summary>
+          <ul>
+            {q.undatedItems.map((i) => (
+              <li key={`${i.courseId}-${i.assignmentId}`}>
+                <span>{i.url ? <a href={i.url} target="_blank" rel="noreferrer">{i.name}</a> : i.name} <span className="name">{i.courseCode}</span></span>
+                <span className="side">
+                  {i.impact !== null && <span>{share(i.impact)}%</span>}
+                  <button type="button" className="quiet" onClick={() => onDone(doneKey(i.courseId, i.assignmentId), true)} aria-label={`Mark ${i.name} as done`}>Done</button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       {q.done.length > 0 && (
         <details className="donelist">
           <summary>Marked done by you ({q.done.length})</summary>
@@ -99,7 +115,7 @@ export function UpNext({ entries, loading, done, onDone }: {
         {q.later > 0 && ` ${q.later} more due after ${WINDOW_DAYS} days.`}
         {q.awaiting > 0 && ` ${q.awaiting} past item${q.awaiting === 1 ? ' is' : 's are'} waiting on a grade.`}
         {q.closed > 0 && ` ${q.closed} closed without a submission; targets count ${q.closed === 1 ? 'it' : 'them'} as zero.`}
-        {q.undated > 0 && ` ${q.undated} open item${q.undated === 1 ? ' has' : 's have'} no due date and ${q.undated === 1 ? 'is' : 'are'} not listed.`}
+
       </p>
     </section>
   );
