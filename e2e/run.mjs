@@ -133,6 +133,10 @@ try {
   assert.match(sy[1], /^differs \| Exams Canvas says 60% \(Exams\) 50%/);
   assert.match(sy[2], /^not-in-canvas \| Project No matching group in Canvas 10%/);
   assert.match(sy[3], /^not-in-canvas \| Final Exam Not in Canvas Dec 15/);
+  // Use the syllabus weights (40 / 50 / 10) for targets: Homework 90%, Exams 79%, Project still to come.
+  await click(panel, 'Use these weights for targets');
+  await panel.waitForFunction(() => /Using your syllabus weights/.test(document.querySelector('.course .target').innerText));
+  assert.match(await panel.$eval('.course .target', (e) => e.innerText), /By those you are at ≈83\.89% now/); // (90*40 + 79*50) / 90
   await click(panel, 'Add to remaining work');
   await panel.waitForFunction(() => /Final Exam.*Exams, added by you/.test(document.querySelector('.course .plan').textContent));
   await (await panel.$('.course')).screenshot({ path: 'e2e/shots/7-syllabus.png' });

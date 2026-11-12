@@ -15,9 +15,9 @@ Read-only. No server, no account, no access token. Nothing leaves your browser. 
 - **Verified grades.** The engine recalculates every course total (points-based, weighted, drop rules) and compares it with what Canvas reports. A number is shown as *verified* only when they agree. Otherwise it is labelled *reported by Canvas*, an *estimate* with its assumptions listed, or not shown at all.
 - **Target solver.** Pick a target and it answers in one sentence: the average you need on what is left, that you are already safe, or that the target is out of reach and what the ceiling is. With one item left it answers in points on that item.
 - **What-ifs and missing work.** Type a score for any ungraded item, or add work that is not in Canvas yet, such as an unposted final. Closed items you never submitted count as zero.
-- **Up next.** One list across all courses, ranked by how much of your grade each item is worth and how soon it is due. Both numbers are on every row.
+- **Up next.** One list across all courses, ranked by how much of your grade each item is worth and how soon it is due. Both numbers are on every row. Mark work done yourself when Canvas has no record of it, such as take-home or on-paper work.
 - **What changed.** New grades, changed grades, moved due dates and new items since your last visit.
-- **Syllabus check.** Upload a PDF or paste text. It reads grade weights and dated work, then shows what matches Canvas, what differs, and what Canvas does not have.
+- **Syllabus check.** Upload a PDF or paste text. It reads grade weights and dated work, then shows what matches Canvas, what differs, and what Canvas does not have. If Canvas has no weights or the wrong ones, targets can use the syllabus weights instead.
 
 ## Run it
 

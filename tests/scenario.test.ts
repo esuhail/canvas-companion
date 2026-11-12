@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compute } from '../lib/core/engine';
 import type { Assignment, AssignmentGroup, Gradebook, GradeResult } from '../lib/core/model';
-import { applyScenario, EMPTY_SCENARIO, openItems, plan } from '../lib/core/scenario';
+import { applyScenario, applyWeights, EMPTY_SCENARIO, gradeBySyllabus, openItems, plan } from '../lib/core/scenario';
 
 const a = (id: string, score: number | null, pointsPossible = 100): Assignment => ({
   id, name: id, pointsPossible, score, excused: false, countsTowardTotal: true, pendingReview: false,
@@ -34,7 +34,7 @@ describe('applyScenario', () => {
       { id: 'p1', groupId: 'HW', name: 'HW 2', pointsPossible: 50 },
       { id: 'p2', groupId: 'nope', name: 'Lost', pointsPossible: 50 },
     ];
-    expect(openItems(book, planned).map((i) => [i.id, i.groupName, i.planned])).toEqual([['p1', 'HW', true], ['final', 'Exams', false]]);
+    expect(openItems(book, { whatIf: {}, planned }).map((i) => [i.id, i.groupName, i.planned])).toEqual([['p1', 'HW', true], ['final', 'Exams', false]]);
   });
 });
 
@@ -50,11 +50,11 @@ describe('closed, never-submitted work', () => {
     expect(plan(b, verified, 61, EMPTY_SCENARIO, now)).toMatchObject({ kind: 'out-of-reach', ceiling: 60 });
   });
   it('is not offered as a what-if', () => {
-    expect(openItems(b, [], now).map((i) => i.id)).toEqual(['open']);
+    expect(openItems(b, EMPTY_SCENARIO, now).map((i) => i.id)).toEqual(['open']);
   });
   it('does not touch on-paper work or work that was handed in', () => {
     const paper: Gradebook = { weighted: false, groups: [g('All', 0, [{ ...a('exam', null), lockAt: past, expectsSubmission: false }, { ...a('essay', null), lockAt: past, submitted: true }])] };
-    expect(openItems(paper, [], now)).toHaveLength(2);
+    expect(openItems(paper, EMPTY_SCENARIO, now)).toHaveLength(2);
   });
 });
 
@@ -95,5 +95,37 @@ describe('plan', () => {
   it('still refuses when the course grade could not be reproduced', () => {
     const mismatch: GradeResult = { kind: 'mismatch', computed: 1, reported: 2, hints: [] };
     expect(plan(book, mismatch, 80, { whatIf: { final: 100 }, planned: [] }).kind).toBe('unknown');
+  });
+});
+
+describe('syllabus weights', () => {
+  // Canvas is points-based: 45/50 homework, 60/100 exam -> 70%. The syllabus says HW 20, Exams 50, Final 30.
+  const pts: Gradebook = { weighted: false, groups: [g('HW', 0, [a('h', 45, 50)]), g('Exams', 0, [a('e', 60)])] };
+  const weights = [{ groupId: 'HW', name: 'Homework', weight: 20 }, { groupId: 'Exams', name: 'Exams', weight: 50 }, { groupId: null, name: 'Final', weight: 30 }];
+  it('re-weights without touching the real gradebook', () => {
+    const before = JSON.stringify(pts);
+    const w = applyWeights(pts, weights);
+    expect(w.weighted).toBe(true);
+    expect(w.groups.map((x) => [x.name, x.weight])).toEqual([['HW', 20], ['Exams', 50], ['Final', 30]]);
+    expect(JSON.stringify(pts)).toBe(before);
+  });
+  it('gives the grade by those weights', () => {
+    expect(gradeBySyllabus(pts, weights)).toBe(68.57); // (90*20 + 60*50) / 70
+    expect(gradeBySyllabus(pts, undefined)).toBeNull();
+  });
+  it('projects with the missing category as work still to come, and says so', () => {
+    // base = 18 + 30 = 48; the final is worth 30. (75 - 48) / 0.30 = 90
+    const p = plan(pts, verified, 75, { ...EMPTY_SCENARIO, weights });
+    expect(p).toMatchObject({ kind: 'needed', average: 90, details: { emptyGroups: ['Final'] } });
+    expect(p.kind === 'needed' && p.details.assumptions.join(' ')).toMatch(/weights from your syllabus/);
+  });
+  it('a Canvas group the syllabus does not mention counts for nothing', () => {
+    const w = applyWeights(pts, [{ groupId: 'Exams', name: 'Exams', weight: 100 }]);
+    expect(w.groups.map((x) => x.weight)).toEqual([0, 100]);
+  });
+  it('work can be added into a syllabus-only category', () => {
+    const s = { whatIf: {}, planned: [{ id: 'p', groupId: 'syllabus:Final', name: 'Final exam', pointsPossible: 200 }], weights };
+    expect(openItems(pts, s).map((i) => [i.name, i.groupName])).toEqual([['Final exam', 'Final']]);
+    expect(plan(pts, verified, 75, s)).toMatchObject({ kind: 'needed', average: 90, details: { emptyGroups: [], remainingCount: 1 } });
   });
 });

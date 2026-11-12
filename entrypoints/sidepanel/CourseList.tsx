@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { grade } from '@/lib/core/engine';
 import type { Course, Gradebook, GradeReport, GroupLine } from '@/lib/core/model';
-import { EMPTY_SCENARIO, openItems, plan, type OpenItem, type Scenario } from '@/lib/core/scenario';
+import { applyWeights, EMPTY_SCENARIO, gradeBySyllabus, openItems, plan, type OpenItem, type Scenario } from '@/lib/core/scenario';
 import { DEFAULT_TARGET, loadDone, loadScenarios, loadSnapshot, loadSyllabi, loadTargets, saveDone, saveScenario, saveSnapshot, saveSyllabus, saveTarget } from '@/lib/settings';
 import type { CourseDataSource } from '@/lib/integration/source';
 import { buildQueue } from '@/lib/core/queue';
@@ -40,7 +40,7 @@ export function resultsText(courses: Course[], reports: Record<string, Loaded>, 
       : p.kind === 'final' ? `final=${p.percent} reaches=${p.reaches}`
       : `${p.kind}${p.kind === 'needed' ? ` avg=${p.average}` : p.kind === 'secured' ? ` floor=${p.floor}` : ` ceiling=${p.ceiling}`}` +
         ` remaining=${p.details.remainingCount} items/${p.details.remainingPoints} pts emptyGroups=${p.details.emptyGroups.length}` +
-        ` whatIfs=${Object.keys(sc.whatIf).length} planned=${sc.planned.length}`;
+        ` whatIfs=${Object.keys(sc.whatIf).length} planned=${sc.planned.length} syllabusWeights=${sc.weights ? 'on' : 'off'}`;
     const dropped = r.groups.reduce((sum, g) => sum + g.droppedCount, 0);
     return `${head}: ${res.kind}${detail} groups=${r.groups.length} weightSum=${weights} dropped=${dropped}\n  target ${targetOf(c)}: ${solver}`;
   }).join('\n');
@@ -133,7 +133,8 @@ function Target(props: {
   const [draft, setDraft] = useState(String(target));
   useEffect(() => setDraft(String(target)), [target]);
   const p = plan(r.book, r.result, target, scenario);
-  const open = openItems(r.book, scenario.planned);
+  const open = openItems(r.book, scenario);
+  const bySyllabus = gradeBySyllabus(r.book, scenario.weights);
   const unfilled = open.filter((i) => scenario.whatIf[i.id] === undefined);
   const id = `target-${props.course.id}`;
   const commit = (raw: string) => {
@@ -163,6 +164,9 @@ function Target(props: {
           ))}
         </span>
       </div>
+      {bySyllabus !== null && (
+        <p className="answer weights">Using your syllabus weights. By those you are at <strong>≈{fmt(bySyllabus)}%</strong> now.</p>
+      )}
       {p.kind === 'needed' && only && (
         <p className="answer">You need <strong>{pts(Math.ceil(p.average * only.pointsPossible / 10) / 10)} / {pts(only.pointsPossible)}</strong> ({fmt(p.average)}%) on {only.name}.</p>
       )}
@@ -172,7 +176,7 @@ function Target(props: {
       {p.kind === 'final' && <p className="answer">With those scores you would finish at <strong>{fmt(p.percent)}%</strong>, {p.reaches ? 'which reaches your target' : 'short of your target'}.</p>}
       {p.kind === 'unknown' && <p className="answer">{p.missing.join('. ')}.</p>}
       {r.result.kind !== 'mismatch' && (
-        <Remaining course={props.course} book={r.book} open={open} scenario={scenario} onScenario={props.onScenario} />
+        <Remaining course={props.course} book={applyWeights(r.book, scenario.weights)} open={open} scenario={scenario} onScenario={props.onScenario} />
       )}
       {assumptions.length > 0 && (
         <details className="assume">
@@ -207,7 +211,7 @@ function Remaining(props: { course: Course; book: Gradebook; open: OpenItem[]; s
   const remove = (itemId: string) => {
     const whatIf = { ...scenario.whatIf };
     delete whatIf[itemId];
-    props.onScenario({ whatIf, planned: scenario.planned.filter((p) => p.id !== itemId) });
+    props.onScenario({ ...scenario, whatIf, planned: scenario.planned.filter((p) => p.id !== itemId) });
   };
   const hasInput = Object.keys(scenario.whatIf).length > 0 || scenario.planned.length > 0;
   return (
@@ -247,7 +251,7 @@ function Remaining(props: { course: Course; book: Gradebook; open: OpenItem[]; s
         </select>
         <button type="submit">Add</button>
       </form>
-      {hasInput && <button type="button" className="quiet clear" onClick={() => props.onScenario(EMPTY_SCENARIO)}>Clear what-ifs and added work</button>}
+      {hasInput && <button type="button" className="quiet clear" onClick={() => props.onScenario({ ...EMPTY_SCENARIO, weights: scenario.weights })}>Clear what-ifs and added work</button>}
     </details>
   );
 }
@@ -373,12 +377,6 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
       <header className="bar">
         <span className={source.live ? 'chip live' : 'chip'}>{source.label}</span>
         <span className="spacer" />
-        {source.live && (
-          <button className="quiet" title="Copies outcomes and totals. No course or assignment names."
-            onClick={async () => { await navigator.clipboard.writeText(resultsText(courses, reports, (c) => targets[key(c)] ?? DEFAULT_TARGET, (c) => scenarios[key(c)] ?? EMPTY_SCENARIO, done)); setCopied(true); }}>
-            {copied ? 'Copied' : 'Copy results'}
-          </button>
-        )}
         {source.live && <button className="quiet" onClick={props.onRefresh}>Refresh</button>}
         <button className="quiet" onClick={props.onLeave}>{source.live ? 'Disconnect' : 'Connect Canvas'}</button>
       </header>
@@ -391,7 +389,8 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
           {digest && <Digest changes={digest.changes} since={digest.since} onSeen={markSeen} />}
           <UpNext
             loading={courses.some((c) => (reports[c.id] ?? 'loading') === 'loading')}
-            entries={entries} done={done} onDone={markDone} />
+            entries={entries.map((e) => ({ course: e.course, book: applyWeights(e.book, scenarios[key(e.course)]?.weights) }))}
+            done={done} onDone={markDone} />
         </main>
       )}
       <main hidden={tab === 'next' && courses.length > 0}>
@@ -425,6 +424,12 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
       </main>
       <footer className="about">
         Read-only. Everything stays in this browser. Not affiliated with Instructure or your school. Version {chrome.runtime.getManifest().version}.
+        {source.live && (
+          <button className="quiet" title="Copies outcomes and totals. No course or assignment names."
+            onClick={async () => { await navigator.clipboard.writeText(resultsText(courses, reports, (c) => targets[key(c)] ?? DEFAULT_TARGET, (c) => scenarios[key(c)] ?? EMPTY_SCENARIO, done)); setCopied(true); }}>
+            {copied ? 'Copied' : 'Copy results'}
+          </button>
+        )}
       </footer>
     </>
   );

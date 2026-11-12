@@ -208,6 +208,10 @@ input {
 .rows .val { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
 .rows .acts, .rows > li > button { grid-column: 1 / -1; display: flex; gap: 4px; align-items: center; justify-self: start; }
 .rows button.quiet { padding: 2px 6px 2px 0; }
+.answer.weights { color: var(--estimate); }
+.answer.weights strong { color: var(--ink); }
+.using { margin: 8px 0 0; color: var(--estimate); font-weight: 550; }
+.using button { font-weight: 550; color: var(--cobalt); padding: 0; }
 .warn { color: var(--estimate); font-weight: 550; margin: 6px 0 0; }
 .syllabus .clear { margin-top: 8px; padding-left: 0; }
 
@@ -231,3 +235,4 @@ input {
 }
 
 .about { padding: 4px 18px 24px; font-size: 0.79rem; color: var(--slate); }
+.about button { display: block; padding: 4px 0; margin-top: 4px; color: var(--cobalt); font-size: inherit; }

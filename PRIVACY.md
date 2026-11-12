@@ -17,7 +17,7 @@ It asks Canvas to leave out assignment descriptions and rubrics. It never reads 
 | Stored | Why |
 | --- | --- |
 | The Canvas address and which connection method worked | So you do not reconnect every time |
-| Targets, what-if scores and work you added | Your own input |
+| Targets, what-if scores, work you added and work you marked done | Your own input |
 | Weights and dated items read from a syllabus you supplied | The syllabus check. The syllabus file and text are not kept. |
 | A snapshot of scores and due dates, keyed by ID, with no names | "Changed since your last visit" |
 

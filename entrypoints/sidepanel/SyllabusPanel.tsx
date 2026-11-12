@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Course, Gradebook } from '@/lib/core/model';
-import type { Scenario } from '@/lib/core/scenario';
+import { applyWeights, type Scenario } from '@/lib/core/scenario';
 import { compareItems, compareWeights, likelyGroup, mergeSyllabus, readSyllabus, type ItemRow, type Syllabus, type WeightRow } from '@/lib/core/syllabus';
 import { onDeviceModelReady, readWithModel } from '@/lib/integration/ai/onDevice';
 import { fileText } from '@/lib/integration/files/text';
@@ -70,7 +70,7 @@ export function SyllabusPanel(props: {
   }
 
   const addPlanned = (title: string) => {
-    const groupId = likelyGroup(title, book);
+    const groupId = likelyGroup(title, applyWeights(book, scenario.weights));
     if (!groupId) return;
     props.onScenario({ ...scenario, planned: [...scenario.planned, { id: `planned-${Date.now()}`, groupId, name: title, pointsPossible: 100 }] });
   };
@@ -103,6 +103,16 @@ export function SyllabusPanel(props: {
   const weightRows = compareWeights(saved.weights, book);
   const itemRows = compareItems(saved.items, book);
   const flagged = weightRows.filter((r) => r.status !== 'match').length + itemRows.filter((r) => r.status !== 'match').length;
+  const usingWeights = Boolean(scenario.weights && scenario.weights.length > 0);
+  const sumsTo100 = Math.abs(saved.weightSum - 100) <= 0.5;
+  const weightsDiffer = weightRows.some((r) => r.status !== 'match');
+  const useWeights = () => props.onScenario({
+    ...scenario,
+    weights: weightRows.flatMap((r) => r.status === 'not-in-syllabus' ? [] : [{
+      groupId: r.status === 'not-in-canvas' ? null : r.canvasId, name: r.name, weight: r.syllabus,
+    }]),
+  });
+  const stopWeights = () => props.onScenario({ whatIf: scenario.whatIf, planned: scenario.planned.filter((p) => !p.groupId.startsWith('syllabus:')) });
   const dropWeight = (name: string) => {
     const weights = saved.weights.filter((w) => w.name !== name);
     props.onSave({ ...saved, weights, weightSum: Math.round(weights.reduce((s, w) => s + w.weight, 0) * 100) / 100 });
@@ -130,7 +140,13 @@ export function SyllabusPanel(props: {
               </li>
             ))}
           </ul>
-          {Math.abs(saved.weightSum - 100) > 0.5 && <p className="warn">These weights add up to {n(saved.weightSum)}%, not 100%. Something was probably missed.</p>}
+          {!sumsTo100 && <p className="warn">These weights add up to {n(saved.weightSum)}%, not 100%. Something was probably missed, so they can’t be used for targets.</p>}
+          {sumsTo100 && usingWeights && (
+            <p className="using">Targets for this course use these weights. <button type="button" className="quiet" onClick={stopWeights}>Go back to Canvas’s weights</button></p>
+          )}
+          {sumsTo100 && !usingWeights && weightsDiffer && (
+            <div className="actions"><button type="button" onClick={useWeights}>Use these weights for targets</button></div>
+          )}
         </>
       )}
 

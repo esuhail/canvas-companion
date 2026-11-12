@@ -144,8 +144,8 @@ export function similarity(x: string, y: string): number {
 const MATCH = 0.5;
 
 export type WeightRow =
-  | { status: 'match' | 'differs'; name: string; syllabus: number; canvasName: string; canvas: number }
-  | { status: 'canvas-unweighted'; name: string; syllabus: number; canvasName: string }
+  | { status: 'match' | 'differs'; name: string; syllabus: number; canvasId: string; canvasName: string; canvas: number }
+  | { status: 'canvas-unweighted'; name: string; syllabus: number; canvasId: string; canvasName: string }
   | { status: 'not-in-canvas'; name: string; syllabus: number }
   | { status: 'not-in-syllabus'; canvasName: string; canvas: number };
 
@@ -156,9 +156,9 @@ export function compareWeights(weights: SyllabusWeight[], book: Gradebook): Weig
       .map((g) => ({ g, sim: similarity(w.name, g.name) })).sort((x, y) => y.sim - x.sim)[0];
     if (!best || best.sim < MATCH) return { status: 'not-in-canvas', name: w.name, syllabus: w.weight };
     used.add(best.g.id);
-    if (!book.weighted) return { status: 'canvas-unweighted', name: w.name, syllabus: w.weight, canvasName: best.g.name };
+    if (!book.weighted) return { status: 'canvas-unweighted', name: w.name, syllabus: w.weight, canvasId: best.g.id, canvasName: best.g.name };
     const same = Math.abs(best.g.weight - w.weight) <= 0.5;
-    return { status: same ? 'match' : 'differs', name: w.name, syllabus: w.weight, canvasName: best.g.name, canvas: best.g.weight };
+    return { status: same ? 'match' : 'differs', name: w.name, syllabus: w.weight, canvasId: best.g.id, canvasName: best.g.name, canvas: best.g.weight };
   });
   if (book.weighted) {
     for (const g of book.groups) {

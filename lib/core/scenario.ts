@@ -18,9 +18,19 @@ export interface PlannedItem {
   pointsPossible: number;
 }
 
+/** One line of the weights the student confirmed from their syllabus. */
+export interface WeightOverride {
+  /** The Canvas group it maps to, or null for a category Canvas does not have. */
+  groupId: string | null;
+  name: string;
+  weight: number;
+}
+
 export interface Scenario {
   whatIf: Record<string, number>;
   planned: PlannedItem[];
+  /** When set, projections use these weights instead of Canvas's. */
+  weights?: WeightOverride[];
 }
 
 export const EMPTY_SCENARIO: Scenario = { whatIf: {}, planned: [] };
@@ -40,6 +50,30 @@ export function settleClosed(book: Gradebook, now: Date): { book: Gradebook; cou
     })),
   };
   return { book: settled, count };
+}
+
+/**
+ * Re-weights the gradebook by the syllabus. Canvas groups that the syllabus does
+ * not mention get 0%. Syllabus categories Canvas lacks become empty groups, which
+ * the solver already treats as work still to come.
+ */
+export function applyWeights(book: Gradebook, weights: WeightOverride[] | undefined): Gradebook {
+  if (!weights || weights.length === 0) return book;
+  const byGroup = new Map(weights.filter((w) => w.groupId !== null).map((w) => [w.groupId as string, w.weight]));
+  return {
+    weighted: true,
+    groups: [
+      ...book.groups.map((g) => ({ ...g, weight: byGroup.get(g.id) ?? 0 })),
+      ...weights.filter((w) => w.groupId === null).map((w) => ({
+        id: `syllabus:${w.name}`, name: w.name, weight: w.weight, dropLowest: 0, dropHighest: 0, neverDrop: [], assignments: [],
+      })),
+    ],
+  };
+}
+
+/** The current grade if the syllabus weights were the real ones. Always an estimate. */
+export function gradeBySyllabus(book: Gradebook, weights: WeightOverride[] | undefined): number | null {
+  return weights && weights.length > 0 ? compute(applyWeights(book, weights)).percent : null;
 }
 
 /** Adds planned items only: the list of everything still open, before any what-if. */
@@ -87,8 +121,8 @@ export interface OpenItem {
 }
 
 /** Every item still to be graded, real or planned, in gradebook order. */
-export function openItems(book: Gradebook, planned: PlannedItem[], now: Date = new Date()): OpenItem[] {
-  return withPlanned(settleClosed(book, now).book, planned).groups.flatMap((g) =>
+export function openItems(book: Gradebook, s: Scenario, now: Date = new Date()): OpenItem[] {
+  return withPlanned(applyWeights(settleClosed(book, now).book, s.weights), s.planned).groups.flatMap((g) =>
     g.assignments.filter(remaining).map((a) => ({
       id: a.id, name: a.name, pointsPossible: a.pointsPossible as number,
       groupId: g.id, groupName: g.name, planned: a.planned === true,
@@ -102,11 +136,14 @@ export type Plan =
   | { kind: 'final'; percent: number; reaches: boolean; assumptions: string[] };
 
 export function plan(realBook: Gradebook, current: GradeResult, target: number, s: Scenario, now: Date = new Date()): Plan {
-  const { book, count: closed } = settleClosed(realBook, now);
-  const open = openItems(realBook, s.planned, now);
+  const settled = settleClosed(realBook, now);
+  const closed = settled.count;
+  const book = applyWeights(settled.book, s.weights);
+  const open = openItems(realBook, s, now);
   const filled = open.filter((i) => Number.isFinite(s.whatIf[i.id]) && (s.whatIf[i.id] as number) >= 0);
   const plannedCount = open.filter((i) => i.planned).length;
   const extra: string[] = [];
+  if (s.weights && s.weights.length > 0) extra.push('Uses the weights from your syllabus instead of the ones in Canvas');
   if (closed > 0) extra.push(`Counts ${closed} closed item${closed === 1 ? '' : 's'} you did not submit as zero`);
   if (filled.length > 0) extra.push(`Counts the ${filled.length} what-if score${filled.length === 1 ? '' : 's'} you entered as if real`);
   if (plannedCount > 0) extra.push(`Includes ${plannedCount} item${plannedCount === 1 ? '' : 's'} you added that ${plannedCount === 1 ? 'is' : 'are'} not in Canvas`);
