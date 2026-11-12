@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { grade } from '@/lib/core/engine';
 import type { Course, Gradebook, GradeReport, GroupLine } from '@/lib/core/model';
-import { project } from '@/lib/core/solver';
-import { DEFAULT_TARGET, loadTargets, saveTarget } from '@/lib/settings';
+import { EMPTY_SCENARIO, openItems, plan, type OpenItem, type Scenario } from '@/lib/core/scenario';
+import { DEFAULT_TARGET, loadScenarios, loadTargets, saveScenario, saveTarget } from '@/lib/settings';
 import type { CourseDataSource } from '@/lib/integration/source';
 
 /** The track spans 50–100%. Most course grades live there; lower values pin to the left edge. */
@@ -15,7 +15,7 @@ const pts = (n: number) => String(Math.round(n * 100) / 100);
 type Loaded = (GradeReport & { book: Gradebook }) | 'loading' | 'failed';
 
 /** Plain text for a bug report: outcomes and numbers, no course or assignment names. */
-export function resultsText(courses: Course[], reports: Record<string, Loaded>, targetOf: (c: Course) => number): string {
+export function resultsText(courses: Course[], reports: Record<string, Loaded>, targetOf: (c: Course) => number, scenarioOf: (c: Course) => Scenario): string {
   return courses.map((c, i) => {
     const r = reports[c.id];
     const head = `course ${i + 1} (${c.weighted ? 'weighted' : 'points'}, canvas total ${c.official.kind})`;
@@ -26,10 +26,13 @@ export function resultsText(courses: Course[], reports: Record<string, Loaded>, 
       res.kind === 'mismatch' ? ` computed=${res.computed} reported=${res.reported}`
       : res.kind === 'insufficient' ? ` (${res.missing.join('; ')})`
       : '';
-    const p = project(r.book, res, targetOf(c));
+    const sc = scenarioOf(c);
+    const p = plan(r.book, res, targetOf(c), sc);
     const solver = p.kind === 'unknown' ? `unknown (${p.missing.join('; ')})`
+      : p.kind === 'final' ? `final=${p.percent} reaches=${p.reaches}`
       : `${p.kind}${p.kind === 'needed' ? ` avg=${p.average}` : p.kind === 'secured' ? ` floor=${p.floor}` : ` ceiling=${p.ceiling}`}` +
-        ` remaining=${p.details.remainingCount} items/${p.details.remainingPoints} pts assumptions=${p.details.assumptions.length}`;
+        ` remaining=${p.details.remainingCount} items/${p.details.remainingPoints} pts emptyGroups=${p.details.emptyGroups.length}` +
+        ` whatIfs=${Object.keys(sc.whatIf).length} planned=${sc.planned.length}`;
     const dropped = r.groups.reduce((sum, g) => sum + g.droppedCount, 0);
     return `${head}: ${res.kind}${detail} groups=${r.groups.length} weightSum=${weights} dropped=${dropped}\n  target ${targetOf(c)}: ${solver}`;
   }).join('\n');
@@ -114,22 +117,31 @@ function Breakdown({ groups }: { groups: GroupLine[] }) {
 
 const QUICK = [70, 80, 90];
 
-function Target(props: { course: Course; r: GradeReport & { book: Gradebook }; target: number; onTarget: (t: number) => void }) {
-  const { r, target } = props;
+function Target(props: {
+  course: Course; r: GradeReport & { book: Gradebook }; target: number; onTarget: (t: number) => void;
+  scenario: Scenario; onScenario: (s: Scenario) => void;
+}) {
+  const { r, target, scenario } = props;
   const [draft, setDraft] = useState(String(target));
   useEffect(() => setDraft(String(target)), [target]);
-  const p = project(r.book, r.result, target);
+  const p = plan(r.book, r.result, target, scenario);
+  const open = openItems(r.book, scenario.planned);
+  const unfilled = open.filter((i) => scenario.whatIf[i.id] === undefined);
   const id = `target-${props.course.id}`;
   const commit = (raw: string) => {
     const t = Number(raw);
     if (Number.isFinite(t) && t > 0 && t <= 150) props.onTarget(Math.round(t * 10) / 10);
     else setDraft(String(target));
   };
-  const rest = p.kind === 'unknown' ? '' :
-    `the ${p.details.remainingCount === 0 ? 'work still to come' : `${p.details.remainingCount} ungraded item${p.details.remainingCount === 1 ? '' : 's'}`}` +
-    (p.details.remainingPoints > 0 ? ` (${pts(p.details.remainingPoints)} points)` : '');
+  const details = p.kind === 'unknown' || p.kind === 'final' ? null : p.details;
+  // When exactly one real item is left, answer in points on that item.
+  const only = details && unfilled.length === 1 && details.emptyGroups.length === 0 ? unfilled[0] : undefined;
+  const rest = !details ? '' :
+    `the ${details.remainingCount === 0 ? 'work still to come' : `${details.remainingCount} ungraded item${details.remainingCount === 1 ? '' : 's'}`}` +
+    (details.remainingPoints > 0 ? ` (${pts(details.remainingPoints)} points)` : '');
+  const assumptions = p.kind === 'unknown' ? [] : p.kind === 'final' ? p.assumptions : p.details.assumptions;
   return (
-    <section className={`target ${p.kind}`} aria-label={`Target for ${props.course.code}`}>
+    <section className={`target ${p.kind}${p.kind === 'final' && !p.reaches ? ' short' : ''}`} aria-label={`Target for ${props.course.code}`}>
       <div className="aim">
         <label htmlFor={id}>To finish with</label>
         <span className="field">
@@ -143,21 +155,98 @@ function Target(props: { course: Course; r: GradeReport & { book: Gradebook }; t
           ))}
         </span>
       </div>
-      {p.kind === 'needed' && <p className="answer">You need an average of <strong>{fmt(p.average)}%</strong> on {rest}.</p>}
+      {p.kind === 'needed' && only && (
+        <p className="answer">You need <strong>{pts(Math.ceil(p.average * only.pointsPossible / 10) / 10)} / {pts(only.pointsPossible)}</strong> ({fmt(p.average)}%) on {only.name}.</p>
+      )}
+      {p.kind === 'needed' && !only && <p className="answer">You need an average of <strong>{fmt(p.average)}%</strong> on {rest}.</p>}
       {p.kind === 'secured' && <p className="answer">Already secured. Even 0% on {rest} leaves you at <strong>{fmt(p.floor)}%</strong>.</p>}
-      {p.kind === 'out-of-reach' && <p className="answer">Out of reach with what Canvas lists. 100% on {rest} gets you to <strong>{fmt(p.ceiling)}%</strong>.</p>}
+      {p.kind === 'out-of-reach' && <p className="answer">Out of reach with what is listed. 100% on {rest} gets you to <strong>{fmt(p.ceiling)}%</strong>.</p>}
+      {p.kind === 'final' && <p className="answer">With those scores you would finish at <strong>{fmt(p.percent)}%</strong>, {p.reaches ? 'which reaches your target' : 'short of your target'}.</p>}
       {p.kind === 'unknown' && <p className="answer">{p.missing.join('. ')}.</p>}
-      {p.kind !== 'unknown' && (
+      {r.result.kind !== 'mismatch' && (
+        <Remaining course={props.course} book={r.book} open={open} scenario={scenario} onScenario={props.onScenario} />
+      )}
+      {assumptions.length > 0 && (
         <details className="assume">
-          <summary>This projection assumes {p.details.assumptions.length} thing{p.details.assumptions.length === 1 ? '' : 's'}</summary>
-          <ul>{p.details.assumptions.map((s) => <li key={s}>{s}</li>)}</ul>
+          <summary>This projection assumes {assumptions.length} thing{assumptions.length === 1 ? '' : 's'}</summary>
+          <ul>{assumptions.map((s) => <li key={s}>{s}</li>)}</ul>
         </details>
       )}
     </section>
   );
 }
 
-function CourseRow({ course, r, target, onTarget }: { course: Course; r: Loaded; target: number; onTarget: (t: number) => void }) {
+/** The open items, each with an optional what-if score, plus a form for work not in Canvas yet. */
+function Remaining(props: { course: Course; book: Gradebook; open: OpenItem[]; scenario: Scenario; onScenario: (s: Scenario) => void }) {
+  const { course, book, open, scenario } = props;
+  const [name, setName] = useState('');
+  const [points, setPoints] = useState('100');
+  const [groupId, setGroupId] = useState(book.groups[0]?.id ?? '');
+  const setWhatIf = (itemId: string, raw: string) => {
+    const whatIf = { ...scenario.whatIf };
+    const n = Number(raw);
+    if (raw.trim() === '' || !Number.isFinite(n) || n < 0) delete whatIf[itemId];
+    else whatIf[itemId] = n;
+    props.onScenario({ ...scenario, whatIf });
+  };
+  const add = () => {
+    const p = Number(points);
+    if (!name.trim() || !Number.isFinite(p) || p <= 0 || !groupId) return;
+    const item = { id: `planned-${Date.now()}`, groupId, name: name.trim(), pointsPossible: p };
+    props.onScenario({ ...scenario, planned: [...scenario.planned, item] });
+    setName('');
+  };
+  const remove = (itemId: string) => {
+    const whatIf = { ...scenario.whatIf };
+    delete whatIf[itemId];
+    props.onScenario({ whatIf, planned: scenario.planned.filter((p) => p.id !== itemId) });
+  };
+  const hasInput = Object.keys(scenario.whatIf).length > 0 || scenario.planned.length > 0;
+  return (
+    <details className="plan">
+      <summary>Remaining work and what-ifs{open.length > 0 ? ` (${open.length})` : ''}</summary>
+      {open.length === 0 && <p className="fine">Canvas lists nothing ungraded. Add work your instructor hasn’t posted yet.</p>}
+      {open.length > 0 && (
+        <ul className="open">
+          {open.map((i) => {
+            const fid = `whatif-${course.id}-${i.id}`;
+            return (
+              <li key={i.id}>
+                <label htmlFor={fid}>
+                  {i.name}
+                  <span className="count">{i.groupName}{i.planned ? ', added by you' : ''}</span>
+                </label>
+                <span className="score">
+                  <input id={fid} inputMode="decimal" placeholder="–" defaultValue={scenario.whatIf[i.id] ?? ''}
+                    key={`${fid}-${scenario.whatIf[i.id] ?? ''}`}
+                    onBlur={(e) => setWhatIf(i.id, e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') setWhatIf(i.id, e.currentTarget.value); }}
+                    aria-label={`What-if score for ${i.name}, out of ${pts(i.pointsPossible)}`} />
+                  <span>/ {pts(i.pointsPossible)}</span>
+                  {i.planned && <button type="button" className="quiet" onClick={() => remove(i.id)} aria-label={`Remove ${i.name}`}>Remove</button>}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <form className="add" onSubmit={(e) => { e.preventDefault(); add(); }}>
+        <p className="fine">Not in Canvas yet? Add it.</p>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Final exam" aria-label="Name of the work to add" />
+        <input className="pts" inputMode="decimal" value={points} onChange={(e) => setPoints(e.target.value)} aria-label="Points possible" />
+        <select value={groupId} onChange={(e) => setGroupId(e.target.value)} aria-label="Assignment group">
+          {book.groups.map((g) => <option key={g.id} value={g.id}>{g.name}{book.weighted ? ` (${pts(g.weight)}%)` : ''}</option>)}
+        </select>
+        <button type="submit">Add</button>
+      </form>
+      {hasInput && <button type="button" className="quiet clear" onClick={() => props.onScenario(EMPTY_SCENARIO)}>Clear what-ifs and added work</button>}
+    </details>
+  );
+}
+
+function CourseRow({ course, r, target, onTarget, scenario, onScenario }: {
+  course: Course; r: Loaded; target: number; onTarget: (t: number) => void; scenario: Scenario; onScenario: (s: Scenario) => void;
+}) {
   const h = headline(course, r);
   const letter = course.official.kind === 'reported' && h.basis !== 'estimate' ? course.official.letter : null;
   return (
@@ -183,7 +272,7 @@ function CourseRow({ course, r, target, onTarget }: { course: Course; r: Loaded;
         )}
       </div>
       <Basis course={course} r={r} />
-      {r !== 'loading' && r !== 'failed' && <Target course={course} r={r} target={target} onTarget={onTarget} />}
+      {r !== 'loading' && r !== 'failed' && <Target course={course} r={r} target={target} onTarget={onTarget} scenario={scenario} onScenario={onScenario} />}
       {r !== 'loading' && r !== 'failed' && r.groups.some((g) => g.totalCount > 0) && <Breakdown groups={r.groups} />}
     </li>
   );
@@ -195,7 +284,12 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
   const [copied, setCopied] = useState(false);
   const [targets, setTargets] = useState<Record<string, number>>({});
   const key = (c: Course) => `${source.label}:${c.id}`;
-  useEffect(() => { loadTargets().then(setTargets); }, []);
+  const [scenarios, setScenarios] = useState<Record<string, Scenario>>({});
+  useEffect(() => { loadTargets().then(setTargets); loadScenarios().then(setScenarios); }, []);
+  const setScenario = (c: Course, sc: Scenario) => {
+    setScenarios((prev) => ({ ...prev, [key(c)]: sc }));
+    void saveScenario(key(c), sc);
+  };
   const setTarget = (c: Course, t: number) => {
     setTargets((prev) => ({ ...prev, [key(c)]: t }));
     void saveTarget(key(c), t);
@@ -229,7 +323,7 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
         <span className="spacer" />
         {source.live && (
           <button className="quiet" title="Copies outcomes and totals. No course or assignment names."
-            onClick={async () => { await navigator.clipboard.writeText(resultsText(courses, reports, (c) => targets[key(c)] ?? DEFAULT_TARGET)); setCopied(true); }}>
+            onClick={async () => { await navigator.clipboard.writeText(resultsText(courses, reports, (c) => targets[key(c)] ?? DEFAULT_TARGET, (c) => scenarios[key(c)] ?? EMPTY_SCENARIO)); setCopied(true); }}>
             {copied ? 'Copied' : 'Copy results'}
           </button>
         )}
@@ -249,7 +343,8 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
             <ul className="courses">
               {courses.filter((c) => (c.term ?? '') === term).map((c) => (
                 <CourseRow key={c.id} course={c} r={reports[c.id] ?? 'loading'}
-                  target={targets[key(c)] ?? DEFAULT_TARGET} onTarget={(t) => setTarget(c, t)} />
+                  target={targets[key(c)] ?? DEFAULT_TARGET} onTarget={(t) => setTarget(c, t)}
+                  scenario={scenarios[key(c)] ?? EMPTY_SCENARIO} onScenario={(sc) => setScenario(c, sc)} />
               ))}
             </ul>
           </section>

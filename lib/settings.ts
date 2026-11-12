@@ -1,3 +1,4 @@
+import type { Scenario } from './core/scenario';
 import type { Transport } from './integration/canvas/transport';
 
 /** The only thing persisted: which Canvas, and which transport worked. No course data. */
@@ -32,4 +33,16 @@ export async function loadTargets(): Promise<Record<string, number>> {
 
 export async function saveTarget(key: string, target: number): Promise<void> {
   await chrome.storage.local.set({ [TARGETS]: { ...(await loadTargets()), [key]: target } });
+}
+
+/** What-if scores and planned items the student typed in, keyed by course. */
+const SCENARIOS = 'scenarios';
+
+export async function loadScenarios(): Promise<Record<string, Scenario>> {
+  const got = await chrome.storage.local.get(SCENARIOS);
+  return (got[SCENARIOS] as Record<string, Scenario> | undefined) ?? {};
+}
+
+export async function saveScenario(key: string, scenario: Scenario): Promise<void> {
+  await chrome.storage.local.set({ [SCENARIOS]: { ...(await loadScenarios()), [key]: scenario } });
 }

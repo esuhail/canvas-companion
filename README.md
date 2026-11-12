@@ -2,7 +2,7 @@
 
 A Chrome side panel that shows your own Canvas courses and grades. Read-only. No server, no account, no token. Nothing leaves your browser.
 
-**Status: milestone 4 of several.** Access is proven on GMU Canvas (both transports). The grade engine handles points-based and weighted courses and checks every result against Canvas's own total. The target-score solver answers "what average do I need on what's left" per course and lists its assumptions. Drop rules ("drop the lowest quiz") are applied the way Canvas applies them. The work queue and syllabus features are not built yet.
+**Status: milestone 5 of several.** Access is proven on GMU Canvas (both transports). The grade engine handles points-based and weighted courses and checks every result against Canvas's own total. The target-score solver answers "what average do I need on what's left" per course and lists its assumptions. Drop rules ("drop the lowest quiz") are applied the way Canvas applies them. Each course also lists its remaining work: enter what-if scores, or add work that is not in Canvas yet, and the target answer updates. With one item left it answers in points on that item. The work queue and syllabus features are not built yet.
 
 Every course total is shown in one of four states: **verified** (we calculated it and Canvas agrees), **reported** (Canvas's number, which we could not reproduce), **estimate** (calculated, nothing to check it against), or no number at all.
 
@@ -51,4 +51,4 @@ To change how we reach Canvas, add a `Transport` or a new `CourseDataSource`. No
 - No write requests. Transports have no way to send a method or a body.
 - No reads outside the allowlist in `lib/integration/canvas/client.ts`.
 - No background activity. Requests happen only while the panel is open.
-- No stored course data. Only the Canvas address and the working transport are saved.
+- No stored course data. Only the Canvas address, the working transport, and what you type in (targets, what-if scores, added work) are saved, all in this browser.

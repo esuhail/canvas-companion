@@ -76,9 +76,22 @@ try {
   await panel.$eval('#target-1', (e) => e.select());
   await panel.type('#target-1', '80');
   await panel.keyboard.press('Enter');
-  await panel.waitForFunction(() => /need an average/.test(document.querySelector('.course .answer').innerText));
-  assert.match(await answer(), /need an average of 76\.7% on the 1 ungraded item/);
-  console.log('PASS solver answers on live data');
+  await panel.waitForFunction(() => /You need/.test(document.querySelector('.course .answer').innerText));
+  assert.match(await answer(), /76\.7%/);
+  // One item left, so the answer is in points on that item.
+  assert.match(await answer(), /You need 76\.7 \/ 100 \(76\.7%\) on Item 103/);
+  // What-if: 100 on the remaining exam -> 36 + 60*170/200 = 87.
+  await panel.$eval('.course .plan', (d) => { d.open = true; });
+  await panel.type('#whatif-1-103', '100');
+  await panel.keyboard.press('Enter');
+  await panel.waitForFunction(() => /would finish/.test(document.querySelector('.course .answer').innerText));
+  assert.match(await answer(), /would finish at 87\.0%, which reaches your target/);
+  // Work that is not in Canvas: a 100-point item in Homework, with no what-if on it.
+  await panel.type('.course .plan .add input[aria-label="Name of the work to add"]', 'Bonus set');
+  await panel.click('.course .plan .add button[type=submit]');
+  await panel.waitForFunction(() => /Bonus set/.test(document.querySelector('.course .answer').innerText));
+  assert.match(await answer(), /You need .* \/ 100 .* on Bonus set/);
+  console.log('PASS solver answers per item, with a what-if score and with added work');
   await panel.screenshot({ path: 'e2e/shots/4-courses-live.png', fullPage: true });
   console.log('PASS verified, estimate and a drop rule all come out of live data');
 

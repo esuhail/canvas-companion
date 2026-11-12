@@ -102,6 +102,23 @@ input {
 .target.out-of-reach .answer strong { color: var(--danger); }
 .target.secured .answer strong { color: var(--reported); }
 .target.unknown .answer { color: var(--slate); }
+.target.final:not(.short) .answer strong { color: var(--reported); }
+.target.short .answer strong { color: var(--danger); }
+.plan { margin-top: 8px; font-size: 0.93rem; }
+.plan summary { cursor: pointer; color: var(--cobalt); font-weight: 550; width: fit-content; border-radius: 4px; }
+.plan .open { list-style: none; margin: 8px 0 0; padding: 0; }
+.plan .open li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid color-mix(in srgb, var(--cobalt) 14%, var(--paper)); }
+.plan .open label { margin: 0; font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+.plan .count { display: block; font-size: 0.86rem; color: var(--slate); font-weight: 400; }
+.plan .score { display: inline-flex; align-items: center; gap: 5px; flex: none; font-variant-numeric: tabular-nums; color: var(--slate); }
+.plan .score input { width: 4.4em; padding: 4px 6px; text-align: right; font-weight: 600; color: var(--ink); }
+.plan .add { display: grid; grid-template-columns: 1fr 4.4em; gap: 6px; margin-top: 10px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, var(--cobalt) 14%, var(--paper)); }
+.plan .add .fine { grid-column: 1 / -1; margin: 0; }
+.plan .add input, .plan .add select { padding: 5px 7px; min-width: 0; }
+.plan .add .pts { text-align: right; }
+.plan .add select { font: inherit; border: 1px solid var(--slate); border-radius: 6px; background: var(--paper); }
+.plan .add button { padding: 5px 10px; }
+.plan .clear { margin-top: 6px; padding-left: 0; }
 .assume { margin-top: 6px; font-size: 0.86rem; color: var(--slate); }
 .assume summary { cursor: pointer; width: fit-content; border-radius: 4px; }
 .assume ul { margin: 4px 0 0; padding-left: 16px; }
