@@ -2,7 +2,9 @@
 
 A Chrome side panel that shows your own Canvas courses and grades. Read-only. No server, no account, no token. Nothing leaves your browser.
 
-**Status: milestone 1 of several.** It proves that extension code can read Canvas with your signed-in session, and shows the totals Canvas reports. The grade engine is milestone 2.
+**Status: milestone 2 of several.** Access is proven on GMU Canvas (both transports). The grade engine handles points-based and weighted courses and checks every result against Canvas's own total. Drop rules, the target-score solver and the work queue are not built yet.
+
+Every course total is shown in one of four states: **verified** (we calculated it and Canvas agrees), **reported** (Canvas's number, which we could not reproduce), **estimate** (calculated, nothing to check it against), or no number at all.
 
 **Not for public distribution yet.** See [docs/POLICY.md](docs/POLICY.md).
 
@@ -25,14 +27,14 @@ npm run build
 
 | Command | What it proves |
 | --- | --- |
-| `npm test` | Paging, the `while(1);` prefix, the read allowlist, failure classification, course mapping |
+| `npm test` | Grade engine rules, paging, the `while(1);` prefix, the read allowlist, failure classification, mapping |
 | `npm run typecheck` | Types |
 | `npm run e2e` | Loads the built extension in Chrome against a fake Canvas that rejects tokens and answers only to a session cookie. Checks signed-out, signed-in, both transports, and that only GET requests to two paths were sent. |
 
 ## How it is put together
 
 ```
-lib/core/            Domain model. Knows nothing about Canvas, Chrome or React.
+lib/core/            Domain model and grade engine. Knows nothing about Canvas, Chrome or React.
 lib/integration/     Where data comes from. The UI sees only CourseDataSource.
   canvas/transport   Two ways to make one GET: from the extension, or inside a Canvas tab.
   canvas/client      Allowlist, paging, prefix stripping, failure classification.

@@ -61,13 +61,14 @@ try {
   // 3. Courses render from live data, across two pages, without the TA course.
   await click(panel, 'Show my courses');
   await panel.waitForSelector('.course');
-  const rows = await panel.$$eval('.course', (els) => els.map((e) => e.innerText.replace(/\s+/g, ' ')));
+  await panel.waitForFunction(() => !/Checking the calculation/.test(document.body.innerText));
+  const rows = await panel.$$eval('.course', (els) => els.map((e) => e.dataset.basis + ' | ' + e.innerText.replace(/\s+/g, ' ')));
   assert.equal(rows.length, 3);
-  assert.match(rows[0], /CS 310.*91\.4.*A-.*Reported by Canvas/);
-  assert.match(rows[1], /CS 330.*hides the total/);
-  assert.match(rows[2], /MATH 203.*78\.3/);
+  assert.match(rows[0], /^verified \| CS 310.*78\.0%.*C\+.*Verified: our calculation matches Canvas/);
+  assert.match(rows[1], /^estimate \| CS 330.*≈ ?85\.0%.*Estimate.*hides the total/);
+  assert.match(rows[2], /^reported \| MATH 203.*95\.0%.*We calculated 80\.0%.*Quizzes.*drops scores/);
   await panel.screenshot({ path: 'e2e/shots/4-courses-live.png', fullPage: true });
-  console.log('PASS courses render from the session API');
+  console.log('PASS verified, estimate and mismatch all come out of live data');
 
   // 4. The connection survives a reload, and Disconnect forgets it.
   await panel.reload();
@@ -88,8 +89,10 @@ try {
   assert(api.length > 0);
   assert(api.every((r) => r.method === 'GET'), 'a non-GET request was sent');
   assert(api.every((r) => !r.auth), 'an Authorization header was sent');
-  assert.deepEqual([...new Set(api.map((r) => r.path))].sort(), ['/api/v1/courses', '/api/v1/users/self']);
-  console.log(`PASS ${api.length} API requests: all GET, no tokens, 2 distinct paths`);
+  const kinds = [...new Set(api.map((r) => r.path.replace(/courses\/\d+/, 'courses/:id')))].sort();
+  assert.deepEqual(kinds, ['/api/v1/courses', '/api/v1/courses/:id/assignment_groups', '/api/v1/users/self']);
+  assert(api.filter((r) => r.path.endsWith('assignment_groups')).every((r) => r.excludesDescription), 'assignment descriptions were requested');
+  console.log(`PASS ${api.length} API requests: all GET, no tokens, 3 endpoint kinds, no assignment text requested`);
 } finally {
   await browser.close();
   canvas.close();

@@ -68,18 +68,50 @@ input {
 .letter { font-weight: 600; color: var(--slate); }
 .basis { grid-column: 1 / -1; margin: 6px 0 0; }
 
-/* The grade track: the one distinctive element. A solid pin means Canvas reported
-   the number. A hatched, empty track means there is no number to show. */
+/* The grade track: the one distinctive element. The pin tells you how far to
+   trust the number before you read a word:
+     solid teal  = verified (we calculated it and Canvas agrees)
+     solid slate = reported by Canvas, not reproduced
+     hollow amber, no fill = estimate
+     hatched, no pin = no number */
 .track { grid-column: 1 / -1; position: relative; height: 8px; margin-top: 12px; border-radius: 4px; background: var(--mist); }
 .track .tick { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--paper); z-index: 1; }
-.track .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px 0 0 4px; background: color-mix(in srgb, var(--reported) 28%, var(--paper)); }
-.track .pin { position: absolute; top: -4px; width: 4px; height: 16px; margin-left: -2px; border-radius: 2px; background: var(--reported); z-index: 2; }
-.track.hidden, .track.none {
-  background: repeating-linear-gradient(-45deg, var(--mist) 0 4px, var(--line) 4px 5px);
-}
-.track.none { opacity: 0.6; }
-.scale { position: relative; height: 18px; margin: 6px 31px 24px; font-size: 0.79rem; color: var(--slate); font-variant-numeric: tabular-nums; }
-.scale span { position: absolute; transform: translateX(-50%); }
+.track .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px 0 0 4px; }
+.track .pin { position: absolute; top: -4px; width: 4px; height: 16px; margin-left: -2px; border-radius: 2px; z-index: 2; }
+.track.verified .fill { background: color-mix(in srgb, var(--reported) 28%, var(--paper)); }
+.track.verified .pin { background: var(--reported); }
+.track.reported .fill { background: color-mix(in srgb, var(--slate) 22%, var(--paper)); }
+.track.reported .pin { background: var(--slate); }
+.track.estimate .fill { display: none; }
+.track.estimate .pin { width: 8px; margin-left: -4px; background: var(--paper); border: 2px solid var(--estimate); border-radius: 3px; }
+.track.none { background: repeating-linear-gradient(-45deg, var(--mist) 0 4px, var(--line) 4px 5px); }
+
+.basis { grid-column: 1 / -1; margin: 8px 0 0; }
+.basis p { margin: 0; }
+.basis ul { margin: 2px 0 0; padding-left: 16px; }
+.basis.verified { color: var(--reported); font-weight: 550; }
+.basis.estimate > p { color: var(--estimate); font-weight: 600; }
+.num .approx { margin-right: 2px; color: var(--estimate); }
+[data-basis='estimate'] .num { color: var(--ink); }
+
+.breakdown { grid-column: 1 / -1; margin-top: 8px; font-size: 0.86rem; }
+.breakdown summary { cursor: pointer; color: var(--cobalt); font-weight: 550; width: fit-content; border-radius: 4px; }
+.breakdown table { width: 100%; border-collapse: collapse; margin: 8px 0 6px; font-variant-numeric: tabular-nums; }
+.breakdown th, .breakdown td { text-align: left; padding: 5px 0 5px 8px; border-top: 1px solid var(--line); vertical-align: top; font-weight: 400; }
+.breakdown thead th { border-top: 0; color: var(--slate); font-weight: 550; }
+.breakdown th:first-child { padding-left: 0; }
+.breakdown tbody th { font-weight: 550; }
+.breakdown .r { text-align: right; white-space: nowrap; }
+.breakdown .count { display: block; color: var(--slate); font-weight: 400; }
+.breakdown tr.empty { color: var(--unknown); }
+.breakdown .fine { margin: 0; }
+
+.legend { list-style: none; margin: 14px 16px 28px; padding: 0; font-size: 0.86rem; color: var(--slate); }
+.legend li { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.key { width: 4px; height: 14px; border-radius: 2px; flex: none; margin: 0 2px; }
+.key.verified { background: var(--reported); }
+.key.reported { background: var(--slate); }
+.key.estimate { width: 8px; margin: 0; background: var(--paper); border: 2px solid var(--estimate); border-radius: 3px; }
 
 /* Access report */
 .transport { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 10px 0; }
