@@ -39,13 +39,13 @@ Disable the extension during proctored exams.
 
 | Command | What it proves |
 | --- | --- |
-| `npm test` | 180+ unit tests: grade rules, drop rules checked against brute force, solver answers fed back through the engine, queue ranking, change detection, syllabus reading, Canvas client behaviour |
+| `npm test` | 190 unit tests: grade rules, drop rules checked against brute force, solver answers fed back through the engine, queue ranking, change detection, syllabus reading, Canvas client behaviour |
 | `npm run typecheck` | Types |
-| `npm run e2e` | Loads the built extension in Chrome against a stand-in Canvas that rejects tokens and answers only to a session cookie. Covers access, the queue, the solver, what-ifs, a new grade arriving, and reading a real PDF syllabus. Also asserts that only GET requests to three endpoint kinds were sent. |
+| `npm run e2e` | Loads the built extension in Chrome against a stand-in Canvas that rejects tokens and answers only to a session cookie. Covers access, the queue and done marks, the solver, what-ifs, a new grade arriving, reading a real PDF syllabus, and noticing a newer build on disk. Also asserts that only GET requests to three endpoint kinds were sent. |
 
 CI runs the type check, unit tests and build on every push.
 
-Checked on a real Canvas (George Mason University): access works from extension code, and 4 of 4 courses with a reported total came out verified.
+Checked on a real Canvas (George Mason University) across several days: access works from extension code, every course with a reported total came out verified, and the queue's overdue, awaiting-grade and closed counts matched what Canvas showed.
 
 ## How it is put together
 
@@ -79,3 +79,7 @@ Design choices worth knowing:
 - The syllabus reader handles common layouts (dotted tables, bullets, "Name: date" lines). Scanned PDFs and unusual tables will be missed.
 - The on-device model path has no automated tests.
 - Chrome and Edge only. Extensions do not run in mobile browsers.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
