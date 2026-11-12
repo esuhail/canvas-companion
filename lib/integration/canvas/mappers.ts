@@ -1,4 +1,4 @@
-import type { Course, OfficialTotal } from '../../core/model';
+import type { Assignment, AssignmentGroup, Course, OfficialTotal } from '../../core/model';
 
 /** The subset of Canvas's course JSON we read. Everything is optional on purpose:
  *  schools differ, and a missing field must degrade to "unknown", never crash. */
@@ -36,5 +36,51 @@ export function toCourse(c: CanvasCourse): Course | null {
     term: c.term?.name ?? null,
     weighted: c.apply_assignment_group_weights === true,
     official: toOfficialTotal(c),
+  };
+}
+
+export interface CanvasAssignmentGroup {
+  id?: number | string;
+  name?: string;
+  group_weight?: number | null;
+  rules?: { drop_lowest?: number; drop_highest?: number } | null;
+  assignments?: CanvasAssignment[];
+}
+
+export interface CanvasAssignment {
+  id?: number | string;
+  name?: string;
+  points_possible?: number | null;
+  omit_from_final_grade?: boolean;
+  grading_type?: string;
+  submission?: {
+    score?: number | null;
+    excused?: boolean | null;
+    workflow_state?: string;
+  } | null;
+}
+
+export function toAssignment(a: CanvasAssignment): Assignment {
+  const sub = a.submission ?? {};
+  const score = typeof sub.score === 'number' && Number.isFinite(sub.score) ? sub.score : null;
+  return {
+    id: String(a.id ?? ''),
+    name: a.name ?? 'Untitled',
+    pointsPossible: typeof a.points_possible === 'number' ? a.points_possible : null,
+    score,
+    excused: sub.excused === true,
+    countsTowardTotal: a.omit_from_final_grade !== true && a.grading_type !== 'not_graded',
+    pendingReview: sub.workflow_state === 'pending_review',
+  };
+}
+
+export function toGroup(g: CanvasAssignmentGroup): AssignmentGroup {
+  return {
+    id: String(g.id ?? ''),
+    name: g.name ?? 'Assignments',
+    weight: typeof g.group_weight === 'number' ? g.group_weight : 0,
+    dropLowest: g.rules?.drop_lowest ?? 0,
+    dropHighest: g.rules?.drop_highest ?? 0,
+    assignments: (g.assignments ?? []).map(toAssignment),
   };
 }

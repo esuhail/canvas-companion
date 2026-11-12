@@ -26,6 +26,7 @@ export class CanvasError extends Error {
 const ALLOWED = [
   /^\/api\/v1\/users\/self(\?.*)?$/,
   /^\/api\/v1\/courses(\?.*)?$/,
+  /^\/api\/v1\/courses\/\d+\/assignment_groups(\?.*)?$/,
 ];
 
 export function assertAllowed(pathAndQuery: string): void {

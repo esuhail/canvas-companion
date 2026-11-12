@@ -37,7 +37,9 @@ describe('allowlist', () => {
   it('permits only the endpoints we have deliberately added', () => {
     expect(() => assertAllowed('/api/v1/users/self')).not.toThrow();
     expect(() => assertAllowed('/api/v1/courses?per_page=50')).not.toThrow();
+    expect(() => assertAllowed('/api/v1/courses/12/assignment_groups?include[]=assignments')).not.toThrow();
     expect(() => assertAllowed('/api/v1/courses/1/quizzes')).toThrow();
+    expect(() => assertAllowed('/api/v1/courses/1/assignment_groups/2')).toThrow();
     expect(() => assertAllowed('/api/v1/conversations')).toThrow();
     expect(() => assertAllowed('/login')).toThrow();
   });
