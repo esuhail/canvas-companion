@@ -1,3 +1,4 @@
+import type { Snapshot } from './core/digest';
 import type { Scenario } from './core/scenario';
 import type { Transport } from './integration/canvas/transport';
 
@@ -17,7 +18,9 @@ export async function loadConnection(): Promise<Connection | null> {
 export const saveConnection = (c: Connection) => chrome.storage.local.set({ [KEY]: c });
 
 export async function clearConnection(origin: string): Promise<void> {
-  await chrome.storage.local.remove(KEY);
+  // Disconnect forgets everything this extension stored: connection, targets,
+  // what-ifs, added work, and the snapshot used for "what changed".
+  await chrome.storage.local.clear();
   // Hand the site permission back. Fails harmlessly for origins granted at install (e2e).
   await chrome.permissions.remove({ origins: [origin + '/*'] }).catch(() => false);
 }
@@ -46,3 +49,15 @@ export async function loadScenarios(): Promise<Record<string, Scenario>> {
 export async function saveScenario(key: string, scenario: Scenario): Promise<void> {
   await chrome.storage.local.set({ [SCENARIOS]: { ...(await loadScenarios()), [key]: scenario } });
 }
+
+/** Scores and due dates from the last visit, for "what changed". No names. */
+const SNAPSHOT = 'snapshot';
+
+export async function loadSnapshot(sourceKey: string): Promise<Snapshot | null> {
+  const k = `${SNAPSHOT}:${sourceKey}`;
+  const got = await chrome.storage.local.get(k);
+  return (got[k] as Snapshot | undefined) ?? null;
+}
+
+export const saveSnapshot = (sourceKey: string, snapshot: Snapshot) =>
+  chrome.storage.local.set({ [`${SNAPSHOT}:${sourceKey}`]: snapshot });

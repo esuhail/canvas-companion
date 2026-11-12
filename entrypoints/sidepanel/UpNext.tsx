@@ -1,7 +1,47 @@
+import { ago, type Change } from '@/lib/core/digest';
 import type { Course, Gradebook } from '@/lib/core/model';
 import { buildQueue, dueLabel, WINDOW_DAYS } from '@/lib/core/queue';
 
 const share = (n: number) => (n >= 10 ? n.toFixed(0) : n.toFixed(1));
+
+const n = (x: number) => String(Math.round(x * 100) / 100);
+const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'no date');
+
+function describe(c: Change): string {
+  const of = (v: number, p: number | null) => (p ? `${n(v)} / ${n(p)}` : n(v));
+  switch (c.kind) {
+    case 'graded': return `Graded: ${of(c.score, c.pointsPossible)}`;
+    case 'regraded': return `Grade changed from ${n(c.from)} to ${of(c.to, c.pointsPossible)}`;
+    case 'due-moved': return `Due date moved from ${day(c.from)} to ${day(c.to)}`;
+    case 'added': return c.dueAt ? `New, due ${day(c.dueAt)}` : 'New';
+  }
+}
+
+/** What changed since the last visit. Stays until the student says they have seen it. */
+export function Digest({ changes, since, onSeen }: { changes: Change[]; since: string; onSeen: () => void }) {
+  if (changes.length === 0) return null;
+  const shown = changes.slice(0, 12);
+  return (
+    <section className="term digest" aria-label="Changes since your last visit">
+      <h2>Changed since your last visit, {ago(since, new Date())}</h2>
+      <ul className="courses changes">
+        {shown.map((c, i) => (
+          <li key={i} className={c.kind}>
+            <span className="what">
+              {c.url ? <a href={c.url} target="_blank" rel="noreferrer">{c.name}</a> : <span className="title">{c.name}</span>}
+              <span className="name">{c.courseCode}</span>
+            </span>
+            <span className="how">{describe(c)}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="seen">
+        {changes.length > shown.length && <span className="fine">and {changes.length - shown.length} more</span>}
+        <button type="button" onClick={onSeen}>Mark as seen</button>
+      </div>
+    </section>
+  );
+}
 
 /** One ranked list across every course, with the two inputs to the ranking on each row. */
 export function UpNext({ entries, loading }: { entries: Array<{ course: Course; book: Gradebook }>; loading: boolean }) {

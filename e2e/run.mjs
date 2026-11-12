@@ -103,8 +103,18 @@ try {
   console.log('PASS verified, estimate and a drop rule all come out of live data');
 
   // 4. The connection survives a reload, and Disconnect forgets it.
+  // What changed: the instructor grades the open exam between two visits.
+  canvas.gradeOpenExam(88);
   await panel.reload();
-  await panel.waitForSelector('.tabs');
+  await panel.waitForSelector('.digest .changes li');
+  const changes = await panel.$$eval('.digest .changes li', (els) => els.map((e) => e.innerText.replace(/\s+/g, ' ')));
+  assert.deepEqual(changes, ['Item 103 CS 310 Graded: 88 / 100']);
+  await click(panel, 'Mark as seen');
+  await panel.reload();
+  await panel.waitForSelector('.upnext');
+  await new Promise((r) => setTimeout(r, 1500));
+  assert.equal(await panel.$('.digest'), null, 'digest came back after being marked as seen');
+  console.log('PASS a new grade shows up as a change, once');
   await click(panel, 'Grades');
   await panel.waitForSelector('.course .answer');
   assert.equal(await panel.$eval('#target-1', (e) => e.value), '80', 'target was not remembered');

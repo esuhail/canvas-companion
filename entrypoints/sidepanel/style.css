@@ -74,6 +74,20 @@ input {
 .courses.empty p { margin: 0; color: var(--slate); }
 .upnext .note { margin: 10px 2px 24px; max-width: none; }
 
+/* What changed */
+.digest h2 { color: var(--ink); }
+.changes li { display: flex; flex-direction: column; gap: 1px; padding: 10px 0 10px 12px; border-top: 1px solid var(--line); border-left: 3px solid var(--line); margin-left: -14px; padding-left: 11px; }
+.changes li:first-child { border-top: 0; }
+.changes li.graded, .changes li.regraded { border-left-color: var(--reported); }
+.changes li.due-moved { border-left-color: var(--estimate); }
+.changes li.added { border-left-color: var(--cobalt); }
+.changes .what { display: flex; flex-direction: column; min-width: 0; }
+.changes a, .changes .title { font-weight: 650; color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
+.changes a:hover { text-decoration: underline; }
+.changes .how { font-variant-numeric: tabular-nums; }
+.seen { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin: 8px 0 14px; }
+.seen .fine { margin: 0; }
+
 /* Course ledger: one sheet, ruled rows. Not cards. */
 .term { padding: 6px 16px 0; }
 .courses { list-style: none; margin: 0; padding: 0 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }

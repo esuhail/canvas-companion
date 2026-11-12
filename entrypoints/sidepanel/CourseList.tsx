@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { grade } from '@/lib/core/engine';
 import type { Course, Gradebook, GradeReport, GroupLine } from '@/lib/core/model';
 import { EMPTY_SCENARIO, openItems, plan, type OpenItem, type Scenario } from '@/lib/core/scenario';
-import { DEFAULT_TARGET, loadScenarios, loadTargets, saveScenario, saveTarget } from '@/lib/settings';
+import { DEFAULT_TARGET, loadScenarios, loadSnapshot, loadTargets, saveScenario, saveSnapshot, saveTarget } from '@/lib/settings';
 import type { CourseDataSource } from '@/lib/integration/source';
 import { buildQueue } from '@/lib/core/queue';
-import { UpNext } from './UpNext';
+import { diff, snapshotOf, type Change, type Snapshot } from '@/lib/core/digest';
+import { Digest, UpNext } from './UpNext';
 
 /** The track spans 50–100%. Most course grades live there; lower values pin to the left edge. */
 const LO = 50;
@@ -321,6 +322,29 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
     return () => { stale = true; };
   }, [source, courses]);
 
+  // "What changed": compare the stored snapshot with today's data once everything has loaded.
+  const [digest, setDigest] = useState<{ changes: Change[]; since: string } | null>(null);
+  const entries = courses.flatMap((c) => { const r = reports[c.id]; return r && r !== 'loading' && r !== 'failed' ? [{ course: c, book: r.book }] : []; });
+  const allLoaded = courses.length > 0 && courses.every((c) => { const r = reports[c.id]; return r !== undefined && r !== 'loading'; });
+  const anyFailed = courses.some((c) => reports[c.id] === 'failed');
+  useEffect(() => {
+    if (!source.live || !allLoaded || anyFailed) return;
+    let stale = false;
+    loadSnapshot(source.label).then((prev: Snapshot | null) => {
+      if (stale) return;
+      const changes = diff(prev, entries);
+      // First visit, or nothing new: quietly record today as the baseline.
+      if (!prev || changes.length === 0) void saveSnapshot(source.label, snapshotOf(entries, new Date()));
+      else setDigest({ changes, since: prev.takenAt });
+    });
+    return () => { stale = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source, allLoaded, anyFailed]);
+  const markSeen = () => {
+    void saveSnapshot(source.label, snapshotOf(entries, new Date()));
+    setDigest(null);
+  };
+
   const terms = [...new Set(courses.map((c) => c.term ?? ''))];
   return (
     <>
@@ -342,9 +366,10 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
       </nav>
       {tab === 'next' && courses.length > 0 && (
         <main>
+          {digest && <Digest changes={digest.changes} since={digest.since} onSeen={markSeen} />}
           <UpNext
             loading={courses.some((c) => (reports[c.id] ?? 'loading') === 'loading')}
-            entries={courses.flatMap((c) => { const r = reports[c.id]; return r && r !== 'loading' && r !== 'failed' ? [{ course: c, book: r.book }] : []; })} />
+            entries={entries} />
         </main>
       )}
       <main hidden={tab === 'next' && courses.length > 0}>

@@ -59,5 +59,7 @@ export function startFakeCanvas() {
     return json(404, { errors: [{ message: 'The specified resource does not exist.' }] });
   });
   return new Promise((resolve) => server.listen(0, 'localhost', () =>
-    resolve({ origin: `http://localhost:${server.address().port}`, log, close: () => server.close() })));
+    resolve({ origin: `http://localhost:${server.address().port}`, log, close: () => server.close(),
+      /** Simulates the instructor grading the open exam in course 1. */
+      gradeOpenExam: (score) => { groups[1][1].assignments[1].submission = sub(score); } })));
 }
