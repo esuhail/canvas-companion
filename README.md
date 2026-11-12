@@ -67,6 +67,7 @@ entrypoints/         Background worker and the side panel (React)
 
 Design choices worth knowing:
 
+- **The panel is meant to disappear into the browser.** One flat surface, hairlines instead of boxed cards, light and dark to match the system. Course rows are a glance when closed and a workspace when open.
 - **The engine is separate from Canvas.** Integrations map their data into the domain model. To reach Canvas another way, add a `Transport` or a `CourseDataSource`; nothing else changes.
 - **New features are data transformations.** What-ifs, added work and closed items produce a modified copy of the gradebook, and the same engine and solver run on it.
 - **A wrong number is worse than no number.** Anything the engine cannot reproduce is labelled as such, and the solver refuses to project from it.

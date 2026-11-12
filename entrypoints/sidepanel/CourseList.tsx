@@ -8,6 +8,7 @@ import { buildQueue } from '@/lib/core/queue';
 import { diff, snapshotOf, type Change, type Snapshot } from '@/lib/core/digest';
 import type { Syllabus } from '@/lib/core/syllabus';
 import { SyllabusPanel } from './SyllabusPanel';
+import { Mark } from './Mark';
 import { Digest, UpNext } from './UpNext';
 
 /** The track spans 50–100%. Most course grades live there; lower values pin to the left edge. */
@@ -256,40 +257,64 @@ function Remaining(props: { course: Course; book: Gradebook; open: OpenItem[]; s
   );
 }
 
-function CourseRow({ course, r, target, onTarget, scenario, onScenario, syllabus, onSyllabus }: {
+const STATUS = { verified: 'Verified', reported: 'Reported by Canvas', estimate: 'Estimate', none: 'No grade yet' } as const;
+
+/** One line for the collapsed row: where the target stands, without opening anything. */
+function hint(r: Loaded, target: number, scenario: Scenario): string {
+  if (r === 'loading' || r === 'failed') return '';
+  const p = plan(r.book, r.result, target, scenario);
+  if (p.kind === 'needed') return `Need ${fmt(p.average)}% for ${target}`;
+  if (p.kind === 'secured') return `${target} is secured`;
+  if (p.kind === 'out-of-reach') return `${target} is out of reach`;
+  if (p.kind === 'final') return `Would finish at ${fmt(p.percent)}%`;
+  return '';
+}
+
+function CourseRow({ course, r, target, onTarget, scenario, onScenario, syllabus, onSyllabus, open, onToggle }: {
   course: Course; r: Loaded; target: number; onTarget: (t: number) => void; scenario: Scenario; onScenario: (s: Scenario) => void;
-  syllabus: Syllabus | null; onSyllabus: (s: Syllabus | null) => void;
+  syllabus: Syllabus | null; onSyllabus: (s: Syllabus | null) => void; open: boolean; onToggle: () => void;
 }) {
   const h = headline(course, r);
   const letter = course.official.kind === 'reported' && h.basis !== 'estimate' ? course.official.letter : null;
+  const ready = r !== 'loading' && r !== 'failed';
+  const bodyId = `course-${course.id}`;
   return (
-    <li className="course" data-basis={h.basis}>
-      <div className="who">
-        <span className="code">{course.code}</span>
-        {course.name !== course.code && <span className="name">{course.name}</span>}
+    <li className="course" data-basis={h.basis} data-open={open}>
+      <button type="button" className="head" aria-expanded={open} aria-controls={bodyId} onClick={onToggle}>
+        <span className="who">
+          <span className="code">{course.code}</span>
+          {course.name !== course.code && <span className="name">{course.name}</span>}
+        </span>
+        <span className="total">
+          {h.percent === null
+            ? <span className="num none">–</span>
+            : <span className="num">{h.basis === 'estimate' && <small className="approx">≈</small>}{fmt(h.percent)}<small>%</small></span>}
+          {letter && <span className="letter">{letter}</span>}
+        </span>
+        <span className={`track ${h.basis}`} aria-hidden="true">
+          {TICKS.map((t) => <i key={t} className="tick" style={{ left: `${pos(t)}%` }} />)}
+          {target >= LO && target <= 100 && <b className="goal" style={{ left: `${pos(target)}%` }} />}
+          {h.percent !== null && (
+            <>
+              <b className="fill" style={{ width: `${pos(h.percent)}%` }} />
+              <b className="pin" style={{ left: `${pos(h.percent)}%` }} />
+            </>
+          )}
+        </span>
+        <span className="glance">
+          <span className={`state ${h.basis}`}>{r === 'loading' ? 'Checking…' : r === 'failed' ? 'Couldn’t load' : STATUS[h.basis]}</span>
+          <span className="hint">{hint(r, target, scenario)}</span>
+          <span className="chev" aria-hidden="true" />
+        </span>
+      </button>
+      <div className="body" id={bodyId} inert={!open}>
+        <div className="inner">
+          <Basis course={course} r={r} />
+          {ready && <Target course={course} r={r} target={target} onTarget={onTarget} scenario={scenario} onScenario={onScenario} />}
+          {ready && r.groups.some((g) => g.totalCount > 0) && <Breakdown groups={r.groups} />}
+          {ready && <SyllabusPanel course={course} book={r.book} saved={syllabus} onSave={onSyllabus} scenario={scenario} onScenario={onScenario} />}
+        </div>
       </div>
-      <div className="total">
-        {h.percent === null
-          ? <span className="num none">–</span>
-          : <span className="num">{h.basis === 'estimate' && <small className="approx">≈</small>}{fmt(h.percent)}<small>%</small></span>}
-        {letter && <span className="letter">{letter}</span>}
-      </div>
-      <div className={`track ${h.basis}`} aria-hidden="true">
-        {TICKS.map((t) => <i key={t} className="tick" style={{ left: `${pos(t)}%` }} />)}
-        {target >= LO && target <= 100 && <b className="goal" style={{ left: `${pos(target)}%` }} />}
-        {h.percent !== null && (
-          <>
-            <b className="fill" style={{ width: `${pos(h.percent)}%` }} />
-            <b className="pin" style={{ left: `${pos(h.percent)}%` }} />
-          </>
-        )}
-      </div>
-      <Basis course={course} r={r} />
-      {r !== 'loading' && r !== 'failed' && <Target course={course} r={r} target={target} onTarget={onTarget} scenario={scenario} onScenario={onScenario} />}
-      {r !== 'loading' && r !== 'failed' && r.groups.some((g) => g.totalCount > 0) && <Breakdown groups={r.groups} />}
-      {r !== 'loading' && r !== 'failed' && (
-        <SyllabusPanel course={course} book={r.book} saved={syllabus} onSave={onSyllabus} scenario={scenario} onScenario={onScenario} />
-      )}
     </li>
   );
 }
@@ -299,6 +324,8 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
   const [reports, setReports] = useState<Record<string, Loaded>>({});
   const [copied, setCopied] = useState(false);
   const [tab, setTab] = useState<'next' | 'grades'>('next');
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+  const toggle = (id: string) => setOpenIds((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const [targets, setTargets] = useState<Record<string, number>>({});
   const key = (c: Course) => `${source.label}:${c.id}`;
   const [scenarios, setScenarios] = useState<Record<string, Scenario>>({});
@@ -371,25 +398,33 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
     setDigest(null);
   };
 
+  const queueEntries = entries.map((e) => ({ course: e.course, book: applyWeights(e.book, scenarios[key(e.course)]?.weights) }));
   const terms = [...new Set(courses.map((c) => c.term ?? ''))];
   return (
     <>
       <header className="bar">
+        <Mark />
         <span className={source.live ? 'chip live' : 'chip'}>{source.label}</span>
         <span className="spacer" />
         {source.live && <button className="quiet" onClick={props.onRefresh}>Refresh</button>}
         <button className="quiet" onClick={props.onLeave}>{source.live ? 'Disconnect' : 'Connect Canvas'}</button>
       </header>
-      <nav className="tabs" aria-label="Views">
-        <button type="button" aria-pressed={tab === 'next'} onClick={() => setTab('next')}>Up next</button>
-        <button type="button" aria-pressed={tab === 'grades'} onClick={() => setTab('grades')}>Grades</button>
-      </nav>
+      {courses.length > 0 && (
+        <nav className="tabs" aria-label="Views">
+          <button type="button" aria-pressed={tab === 'next'} onClick={() => setTab('next')}>
+            Up next{allLoaded && <span className="n">{buildQueue(queueEntries, new Date(), done).items.length}</span>}
+          </button>
+          <button type="button" aria-pressed={tab === 'grades'} onClick={() => setTab('grades')}>
+            Grades<span className="n">{courses.length}</span>
+          </button>
+        </nav>
+      )}
       {tab === 'next' && courses.length > 0 && (
         <main>
           {digest && <Digest changes={digest.changes} since={digest.since} onSeen={markSeen} />}
           <UpNext
             loading={courses.some((c) => (reports[c.id] ?? 'loading') === 'loading')}
-            entries={entries.map((e) => ({ course: e.course, book: applyWeights(e.book, scenarios[key(e.course)]?.weights) }))}
+            entries={queueEntries}
             done={done} onDone={markDone} />
         </main>
       )}
@@ -408,7 +443,8 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
                 <CourseRow key={c.id} course={c} r={reports[c.id] ?? 'loading'}
                   target={targets[key(c)] ?? DEFAULT_TARGET} onTarget={(t) => setTarget(c, t)}
                   scenario={scenarios[key(c)] ?? EMPTY_SCENARIO} onScenario={(sc) => setScenario(c, sc)}
-                  syllabus={syllabi[key(c)] ?? null} onSyllabus={(sy) => setSyllabus(c, sy)} />
+                  syllabus={syllabi[key(c)] ?? null} onSyllabus={(sy) => setSyllabus(c, sy)}
+                  open={openIds.has(c.id)} onToggle={() => toggle(c.id)} />
               ))}
             </ul>
           </section>

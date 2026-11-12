@@ -14,9 +14,11 @@ const browser = await puppeteer.launch({
   args: ['--no-sandbox', `--disable-extensions-except=${EXT}`, `--load-extension=${EXT}`],
   ignoreDefaultArgs: ['--disable-extensions'],
 });
+/** Opens every course row so its details can be read and used. */
+const openAll = (page) => page.$$eval('.course .head[aria-expanded="false"]', (els) => els.forEach((e) => e.click()));
 const text = (page) => page.evaluate(() => document.body.innerText);
 const click = async (page, label) => {
-  const handle = await page.evaluateHandle((l) => [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === l), label);
+  const handle = await page.evaluateHandle((l) => [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === l || (b.firstChild && b.firstChild.textContent.trim() === l)), label);
   assert(handle.asElement(), `button "${label}" not found`);
   await handle.asElement().click();
 };
@@ -77,6 +79,7 @@ try {
   console.log('PASS queue ranks open work from live data, and done marks work');
   await click(panel, 'Grades');
   await panel.waitForSelector('.course');
+  await openAll(panel);
   await panel.waitForFunction(() => !/Checking the calculation/.test(document.body.innerText));
   const rows = await panel.$$eval('.course', (els) => els.map((e) => e.dataset.basis + ' | ' + e.innerText.replace(/\s+/g, ' ')));
   assert.equal(rows.length, 3);
@@ -124,6 +127,7 @@ try {
   console.log('PASS a new grade shows up as a change, once');
   await click(panel, 'Grades');
   await panel.waitForSelector('.course .answer');
+  await openAll(panel);
 
   // Syllabus: a real PDF is read in the browser and compared with Canvas (Homework 40%, Exams 60%).
   const upload = await panel.$('#syllabus-1-file');
@@ -153,8 +157,15 @@ try {
   await click(panel, 'Look around with sample data');
   await panel.waitForSelector('.queue li');
   await panel.screenshot({ path: 'e2e/shots/6-upnext-sample.png', fullPage: true });
+  await panel.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'dark' }]);
+  await panel.screenshot({ path: 'e2e/shots/6b-upnext-dark.png', fullPage: true });
+  await panel.emulateMediaFeatures([{ name: 'prefers-color-scheme', value: 'light' }]);
   await click(panel, 'Grades');
   await panel.waitForSelector('.course');
+  await new Promise((r) => setTimeout(r, 300));
+  await panel.screenshot({ path: 'e2e/shots/5a-grades-collapsed.png', fullPage: true });
+  await panel.$eval('.course .head', (e) => e.click());
+  await new Promise((r) => setTimeout(r, 400));
   await panel.screenshot({ path: 'e2e/shots/5-courses-sample.png', fullPage: true });
 
   // A newer build written to the extension folder is noticed without a manual reload.

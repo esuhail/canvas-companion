@@ -9,6 +9,7 @@ import type { CourseDataSource } from '@/lib/integration/source';
 import { newerBuildOnDisk } from '@/lib/devUpdate';
 import { clearConnection, loadConnection, saveConnection, type Connection } from '@/lib/settings';
 import { AccessReport } from './AccessReport';
+import { Mark } from './Mark';
 import { CourseList } from './CourseList';
 
 type View =
@@ -141,7 +142,8 @@ export function explain(f: CanvasFailure): string {
 function Connect(props: { error?: string; onCheck: (v: string) => void; onSample: () => void }) {
   const [value, setValue] = useState('');
   return (
-    <main className="sheet">
+    <main className="sheet welcome">
+      <Mark size={36} />
       <h1>Connect your Canvas</h1>
       <p>
         This reads your own courses and grades using the Canvas session already open in this
