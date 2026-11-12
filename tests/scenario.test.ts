@@ -38,6 +38,26 @@ describe('applyScenario', () => {
   });
 });
 
+describe('closed, never-submitted work', () => {
+  const now = new Date('2026-11-10T12:00:00Z');
+  const past = '2026-11-01T00:00:00Z';
+  const b: Gradebook = { weighted: false, groups: [g('All', 0, [a('done', 80), { ...a('closed', null), lockAt: past, missing: true }, a('open', null)])] };
+  it('counts as zero in the projection and is declared', () => {
+    // 80 earned of 300 total; 100 still open. For 60%: (180 - 80) / 100 = 100.
+    const p = plan(b, verified, 60, EMPTY_SCENARIO, now);
+    expect(p).toMatchObject({ kind: 'needed', average: 100, details: { remainingCount: 1 } });
+    expect(p.kind === 'needed' && p.details.assumptions.join(' ')).toMatch(/1 closed item you did not submit as zero/);
+    expect(plan(b, verified, 61, EMPTY_SCENARIO, now)).toMatchObject({ kind: 'out-of-reach', ceiling: 60 });
+  });
+  it('is not offered as a what-if', () => {
+    expect(openItems(b, [], now).map((i) => i.id)).toEqual(['open']);
+  });
+  it('does not touch on-paper work or work that was handed in', () => {
+    const paper: Gradebook = { weighted: false, groups: [g('All', 0, [{ ...a('exam', null), lockAt: past, expectsSubmission: false }, { ...a('essay', null), lockAt: past, submitted: true }])] };
+    expect(openItems(paper, [], now)).toHaveLength(2);
+  });
+});
+
 describe('plan', () => {
   it('with no scenario, equals the plain solver answer', () => {
     expect(plan(book, verified, 80, EMPTY_SCENARIO)).toMatchObject({ kind: 'needed', average: 76.7, details: { remainingCount: 1 } });

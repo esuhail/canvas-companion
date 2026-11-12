@@ -40,6 +40,12 @@ export interface Assignment {
   submitted?: boolean;
   /** Link to the item in the LMS. */
   url?: string;
+  /** After this moment the LMS no longer accepts a submission. */
+  lockAt?: string | null;
+  /** The LMS itself flags this as past due and not handed in. */
+  missing?: boolean;
+  /** False for work with nothing to upload (on paper, in class). */
+  expectsSubmission?: boolean;
 }
 
 export interface AssignmentGroup {

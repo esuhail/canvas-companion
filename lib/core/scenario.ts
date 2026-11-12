@@ -1,6 +1,6 @@
 import { compute } from './engine';
 import type { Assignment, Gradebook, GradeResult } from './model';
-import { project, remaining, type Projection } from './solver';
+import { closedUnsubmitted, project, remaining, type Projection } from './solver';
 
 /**
  * A scenario is the student's own "what if" layered on top of the real gradebook:
@@ -24,6 +24,23 @@ export interface Scenario {
 }
 
 export const EMPTY_SCENARIO: Scenario = { whatIf: {}, planned: [] };
+
+/** Scores closed, never-submitted items as zero. Returns how many there were. */
+export function settleClosed(book: Gradebook, now: Date): { book: Gradebook; count: number } {
+  let count = 0;
+  const settled: Gradebook = {
+    ...book,
+    groups: book.groups.map((g) => ({
+      ...g,
+      assignments: g.assignments.map((a) => {
+        if (!closedUnsubmitted(a, now)) return a;
+        count++;
+        return { ...a, score: 0, pendingReview: false };
+      }),
+    })),
+  };
+  return { book: settled, count };
+}
 
 /** Adds planned items only: the list of everything still open, before any what-if. */
 export function withPlanned(book: Gradebook, planned: PlannedItem[]): Gradebook {
@@ -70,8 +87,8 @@ export interface OpenItem {
 }
 
 /** Every item still to be graded, real or planned, in gradebook order. */
-export function openItems(book: Gradebook, planned: PlannedItem[]): OpenItem[] {
-  return withPlanned(book, planned).groups.flatMap((g) =>
+export function openItems(book: Gradebook, planned: PlannedItem[], now: Date = new Date()): OpenItem[] {
+  return withPlanned(settleClosed(book, now).book, planned).groups.flatMap((g) =>
     g.assignments.filter(remaining).map((a) => ({
       id: a.id, name: a.name, pointsPossible: a.pointsPossible as number,
       groupId: g.id, groupName: g.name, planned: a.planned === true,
@@ -84,11 +101,13 @@ export type Plan =
   /** Every open item has a what-if score, so there is nothing left to solve for. */
   | { kind: 'final'; percent: number; reaches: boolean; assumptions: string[] };
 
-export function plan(book: Gradebook, current: GradeResult, target: number, s: Scenario): Plan {
-  const open = openItems(book, s.planned);
+export function plan(realBook: Gradebook, current: GradeResult, target: number, s: Scenario, now: Date = new Date()): Plan {
+  const { book, count: closed } = settleClosed(realBook, now);
+  const open = openItems(realBook, s.planned, now);
   const filled = open.filter((i) => Number.isFinite(s.whatIf[i.id]) && (s.whatIf[i.id] as number) >= 0);
   const plannedCount = open.filter((i) => i.planned).length;
   const extra: string[] = [];
+  if (closed > 0) extra.push(`Counts ${closed} closed item${closed === 1 ? '' : 's'} you did not submit as zero`);
   if (filled.length > 0) extra.push(`Counts the ${filled.length} what-if score${filled.length === 1 ? '' : 's'} you entered as if real`);
   if (plannedCount > 0) extra.push(`Includes ${plannedCount} item${plannedCount === 1 ? '' : 's'} you added that ${plannedCount === 1 ? 'is' : 'are'} not in Canvas`);
 

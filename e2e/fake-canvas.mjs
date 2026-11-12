@@ -13,9 +13,9 @@ export function startFakeCanvas() {
       enrollments: [{ type: 'student', computed_current_score: 95, computed_current_grade: null }] },
     { id: 4, name: 'Course I TA', course_code: 'CS 112', term: { name: 'Fall 2026' }, enrollments: [{ type: 'ta' }] },
   ];
-  const sub = (score) => ({ score, workflow_state: score === null ? 'unsubmitted' : 'graded' });
+  const sub = (score) => ({ score, workflow_state: score === null ? 'unsubmitted' : 'graded', missing: false });
   const item = (id, score, points) => ({ id, name: `Item ${id}`, points_possible: points, description: 'MUST NOT BE REQUESTED', submission: sub(score),
-    due_at: score === null ? new Date(Date.now() + 3 * 86_400_000).toISOString() : null, html_url: `http://localhost/courses/1/assignments/${id}` });
+    due_at: score === null ? new Date(Date.now() + 3 * 86_400_000).toISOString() : null, html_url: `http://localhost/courses/1/assignments/${id}`, submission_types: ['online_upload'] });
   const groups = {
     // weighted: 90*0.4 + 70*0.6 = 78, matches the reported total -> verified
     1: [{ id: 11, name: 'Homework', group_weight: 40, rules: {}, assignments: [item(101, 90, 100)] },

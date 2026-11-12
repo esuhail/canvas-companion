@@ -37,6 +37,8 @@ export function UpNext({ entries, loading }: { entries: Array<{ course: Course; 
       <p className="fine note">
         Ranked by how much each item is worth and how soon it is due.
         {q.later > 0 && ` ${q.later} more due after ${WINDOW_DAYS} days.`}
+        {q.awaiting > 0 && ` ${q.awaiting} past item${q.awaiting === 1 ? ' is' : 's are'} waiting on a grade.`}
+        {q.closed > 0 && ` ${q.closed} closed without a submission; targets count ${q.closed === 1 ? 'it' : 'them'} as zero.`}
         {q.undated > 0 && ` ${q.undated} open item${q.undated === 1 ? ' has' : 's have'} no due date and ${q.undated === 1 ? 'is' : 'are'} not listed.`}
       </p>
     </section>

@@ -36,6 +36,16 @@ export function remaining(a: Assignment): boolean {
   );
 }
 
+/**
+ * Past its lock date and never handed in: the student can no longer earn these
+ * points, so projections must not pretend they can.
+ */
+export function closedUnsubmitted(a: Assignment, now: Date): boolean {
+  if (!remaining(a) || a.submitted || a.planned || a.expectsSubmission === false || !a.lockAt) return false;
+  const lock = Date.parse(a.lockAt);
+  return Number.isFinite(lock) && lock < now.getTime();
+}
+
 interface Line { base: number; slope: number; details: Details }
 
 /** Builds final(p) = base + slope * p, with p in percent (0–100). */

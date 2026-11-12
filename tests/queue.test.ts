@@ -53,7 +53,7 @@ describe('buildQueue', () => {
   const q = buildQueue([{ course: course('CS 1'), book }], NOW);
   it('lists only open, unsubmitted, dated work inside the window', () => {
     expect(q.items.map((i) => i.assignmentId).sort()).toEqual(['exam-next-week', 'overdue-quiz', 'tiny-tomorrow']);
-    expect(q).toMatchObject({ undated: 1, later: 1 });
+    expect(q).toMatchObject({ undated: 1, later: 1, awaiting: 0, closed: 0 });
   });
   it('ranks overdue first, then weighs impact against time', () => {
     expect(q.items.map((i) => i.assignmentId)).toEqual(['overdue-quiz', 'exam-next-week', 'tiny-tomorrow']);
@@ -62,6 +62,25 @@ describe('buildQueue', () => {
     const other: Gradebook = { weighted: false, groups: [g('All', 0, [a('lab', null, 100, 0.5)])] };
     const both = buildQueue([{ course: course('CS 1'), book }, { course: course('BIO 2'), book: other }], NOW);
     expect(both.items[0]).toMatchObject({ courseCode: 'BIO 2', assignmentId: 'lab', impact: 100 });
+  });
+});
+
+describe('past-due items that are not really overdue', () => {
+  const mk = (extra: Partial<Assignment>) => buildQueue([{ course: course('C'), book: { weighted: false, groups: [g('All', 0, [a('x', null, 100, -3, extra)])] } }], NOW);
+  it('an in-class or on-paper item is waiting on a grade', () => {
+    expect(mk({ expectsSubmission: false })).toMatchObject({ items: [], awaiting: 1 });
+  });
+  it('an item the LMS does not flag as missing is waiting on a grade', () => {
+    expect(mk({ missing: false })).toMatchObject({ items: [], awaiting: 1 });
+  });
+  it('an item flagged missing is overdue', () => {
+    expect(mk({ missing: true }).items).toHaveLength(1);
+  });
+  it('a locked, never-submitted item is closed, not overdue', () => {
+    expect(mk({ missing: true, lockAt: inDays(-1) })).toMatchObject({ items: [], closed: 1 });
+  });
+  it('a locked item with nothing to upload is still just waiting on a grade', () => {
+    expect(mk({ expectsSubmission: false, lockAt: inDays(-1) })).toMatchObject({ items: [], awaiting: 1, closed: 0 });
   });
 });
 

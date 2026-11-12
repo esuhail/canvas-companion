@@ -1,6 +1,6 @@
 import { keptGraded } from './engine';
 import type { Assignment, Course, Gradebook } from './model';
-import { remaining } from './solver';
+import { closedUnsubmitted, remaining } from './solver';
 
 /**
  * The work queue: what to do next across every course, and why.
@@ -31,6 +31,10 @@ export interface Queue {
   undated: number;
   /** Open items due later than the window. */
   later: number;
+  /** Past due with nothing left to do: waiting on a grade (on paper, in class, or not flagged missing). */
+  awaiting: number;
+  /** Past the lock date and never handed in. Nothing can be done about these. */
+  closed: number;
 }
 
 const DAY = 86_400_000;
@@ -71,6 +75,8 @@ export function buildQueue(entries: Array<{ course: Course; book: Gradebook }>, 
   const items: QueueItem[] = [];
   let undated = 0;
   let later = 0;
+  let awaiting = 0;
+  let closed = 0;
   for (const { course, book } of entries) {
     book.groups.forEach((g, gi) => {
       for (const a of g.assignments) {
@@ -81,6 +87,10 @@ export function buildQueue(entries: Array<{ course: Course; book: Gradebook }>, 
         if (!Number.isFinite(due)) { undated++; continue; }
         const daysLeft = (due - now.getTime()) / DAY;
         if (daysLeft > WINDOW_DAYS) { later++; continue; }
+        if (closedUnsubmitted(a, now)) { closed++; continue; }
+        // Past due is only "overdue" when there is something to hand in and the LMS
+        // agrees it is missing. An in-class exam that is simply ungraded is not overdue.
+        if (daysLeft < 0 && (a.expectsSubmission === false || a.missing === false)) { awaiting++; continue; }
         const impact = impactOf(book, gi, a);
         items.push({
           courseId: course.id, courseCode: course.code, assignmentId: a.id, name: a.name, dueAt: a.dueAt,
@@ -90,7 +100,7 @@ export function buildQueue(entries: Array<{ course: Course; book: Gradebook }>, 
     });
   }
   items.sort((x, y) => y.priority - x.priority || x.daysLeft - y.daysLeft);
-  return { items, undated, later };
+  return { items, undated, later, awaiting, closed };
 }
 
 /** "Overdue by 2 days", "Due in 5 hours", "Due tomorrow", "Due in 6 days". */

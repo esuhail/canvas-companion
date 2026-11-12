@@ -16,7 +16,7 @@ describe('assignment mapping', () => {
   it('reads a graded submission', () => {
     expect(toAssignment({ id: 9, name: 'HW 1', points_possible: 20, submission: { score: 18, workflow_state: 'graded' } }))
       .toEqual({ id: '9', name: 'HW 1', pointsPossible: 20, score: 18, excused: false, countsTowardTotal: true, pendingReview: false,
-        dueAt: null, submitted: false, url: undefined });
+        dueAt: null, submitted: false, url: undefined, lockAt: null, missing: undefined, expectsSubmission: true });
   });
   it('keeps a missing or unposted score as null, not zero', () => {
     expect(toAssignment({ id: 1, points_possible: 20 }).score).toBeNull();
@@ -32,6 +32,13 @@ describe('assignment mapping', () => {
     const x = toAssignment({ id: 1, due_at: '2026-12-01T04:59:00Z', html_url: 'https://canvas.example.edu/courses/1/assignments/1', submission: { submitted_at: '2026-11-30T00:00:00Z' } });
     expect(x).toMatchObject({ dueAt: '2026-12-01T04:59:00Z', submitted: true, url: 'https://canvas.example.edu/courses/1/assignments/1' });
     expect(toAssignment({ html_url: 'javascript:alert(1)' }).url).toBeUndefined();
+  });
+  it('reads lock date, the missing flag and whether anything is handed in', () => {
+    expect(toAssignment({ lock_at: '2026-11-01T00:00:00Z', submission: { missing: true } })).toMatchObject({ lockAt: '2026-11-01T00:00:00Z', missing: true });
+    expect(toAssignment({ submission_types: ['on_paper'] }).expectsSubmission).toBe(false);
+    expect(toAssignment({ submission_types: ['none'] }).expectsSubmission).toBe(false);
+    expect(toAssignment({ submission_types: ['online_upload', 'on_paper'] }).expectsSubmission).toBe(true);
+    expect(toAssignment({}).expectsSubmission).toBe(true);
   });
   it('reads group weight and drop rules, defaulting to none', () => {
     expect(toGroup({ id: 3, name: 'Quizzes', group_weight: 20, rules: { drop_lowest: 1 }, assignments: [] }))

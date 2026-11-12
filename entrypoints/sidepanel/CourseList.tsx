@@ -20,7 +20,7 @@ type Loaded = (GradeReport & { book: Gradebook }) | 'loading' | 'failed';
 export function resultsText(courses: Course[], reports: Record<string, Loaded>, targetOf: (c: Course) => number, scenarioOf: (c: Course) => Scenario): string {
   const loaded = courses.flatMap((c) => { const r = reports[c.id]; return r && r !== 'loading' && r !== 'failed' ? [{ course: c, book: r.book }] : []; });
   const q = buildQueue(loaded, new Date());
-  const queueLine = `queue: ${q.items.length} listed (${q.items.filter((i) => i.overdue).length} overdue, ${q.items.filter((i) => i.impact === null).length} weight unknown), ${q.later} later, ${q.undated} undated`;
+  const queueLine = `queue: ${q.items.length} listed (${q.items.filter((i) => i.overdue).length} overdue, ${q.items.filter((i) => i.impact === null).length} weight unknown), ${q.later} later, ${q.undated} undated, ${q.awaiting} awaiting grade, ${q.closed} closed`;
   return queueLine + '\n' + courses.map((c, i) => {
     const r = reports[c.id];
     const head = `course ${i + 1} (${c.weighted ? 'weighted' : 'points'}, canvas total ${c.official.kind})`;

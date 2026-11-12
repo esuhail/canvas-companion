@@ -52,6 +52,8 @@ export interface CanvasAssignment {
   name?: string;
   points_possible?: number | null;
   due_at?: string | null;
+  lock_at?: string | null;
+  submission_types?: string[];
   html_url?: string;
   omit_from_final_grade?: boolean;
   grading_type?: string;
@@ -60,8 +62,12 @@ export interface CanvasAssignment {
     excused?: boolean | null;
     workflow_state?: string;
     submitted_at?: string | null;
+    missing?: boolean;
   } | null;
 }
+
+/** Canvas submission types where the student hands nothing in through Canvas. */
+const NOTHING_TO_UPLOAD = ['none', 'on_paper', 'not_graded', 'wiki_page'];
 
 export function toAssignment(a: CanvasAssignment): Assignment {
   const sub = a.submission ?? {};
@@ -75,6 +81,9 @@ export function toAssignment(a: CanvasAssignment): Assignment {
     countsTowardTotal: a.omit_from_final_grade !== true && a.grading_type !== 'not_graded',
     pendingReview: sub.workflow_state === 'pending_review',
     dueAt: a.due_at ?? null,
+    lockAt: a.lock_at ?? null,
+    missing: typeof sub.missing === 'boolean' ? sub.missing : undefined,
+    expectsSubmission: !(Array.isArray(a.submission_types) && a.submission_types.length > 0 && a.submission_types.every((t) => NOTHING_TO_UPLOAD.includes(t))),
     submitted: Boolean(sub.submitted_at) || sub.workflow_state === 'submitted' || sub.workflow_state === 'pending_review',
     url: typeof a.html_url === 'string' && /^https?:\/\//.test(a.html_url) ? a.html_url : undefined,
   };
