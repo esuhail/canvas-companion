@@ -1,11 +1,10 @@
-/** The product mark: a grade track with a pin. Same motif as the toolbar icon. */
-export function Mark({ size = 20 }: { size?: number }) {
+/** The product mark: a grade line with a target notch. Drawn in the text colour. */
+export function Mark({ size = 18 }: { size?: number }) {
   return (
-    <svg className="mark" width={size} height={size} viewBox="0 0 20 20" aria-hidden="true">
-      <rect width="20" height="20" rx="5" fill="var(--cobalt)" />
-      <rect x="3.5" y="11" width="13" height="2.4" rx="1.2" fill="#fff" opacity="0.4" />
-      <rect x="3.5" y="11" width="8.5" height="2.4" rx="1.2" fill="#fff" />
-      <rect x="11.2" y="7" width="2" height="9.5" rx="1" fill="#fff" />
+    <svg className="mark" width={size} height={size} viewBox="0 0 18 18" aria-hidden="true" fill="currentColor">
+      <rect x="1" y="8" width="16" height="2" rx="1" opacity="0.25" />
+      <rect x="1" y="8" width="10" height="2" rx="1" />
+      <rect x="12.5" y="4" width="1.5" height="10" rx="0.75" />
     </svg>
   );
 }

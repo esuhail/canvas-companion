@@ -83,8 +83,8 @@ try {
   await panel.waitForFunction(() => !/Checking the calculation/.test(document.body.innerText));
   const rows = await panel.$$eval('.course', (els) => els.map((e) => e.dataset.basis + ' | ' + e.innerText.replace(/\s+/g, ' ')));
   assert.equal(rows.length, 3);
-  assert.match(rows[0], /^verified \| CS 310.*C\+.*78\.0%.*Verified: our calculation matches Canvas/);
-  assert.match(rows[1], /^estimate \| CS 330.*≈ ?85\.0%.*Estimate.*hides the total/);
+  assert.match(rows[0], /^verified \| CS 310.*C\+.*78\.0%.*Verified\. Our calculation matches/);
+  assert.match(rows[1], /^estimate \| CS 330.*85\.0%.*Estimate.*hides the total/);
   assert.match(rows[2], /^verified \| MATH 203.*95\.0%.*Verified/); // lowest quiz dropped
   // Solver on live data: HW 40% (90/100), Exams 60% (70/100 graded, 100 left).
   const answer = () => panel.$eval('.course .answer', (e) => e.innerText);

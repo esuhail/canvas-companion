@@ -52,7 +52,7 @@ export function UpNext({ entries, loading, done, onDone }: {
   const biggest = Math.max(1, ...q.items.map((i) => i.impact ?? 0));
   return (
     <section className="term upnext">
-      <h2>Up next, across all courses</h2>
+      <h2 className="sr-only">Up next, across all courses</h2>
       {q.items.length === 0 && (
         <div className="courses empty">
           <p>{loading ? 'Loading your courses…' : `Nothing open is due in the next ${WINDOW_DAYS} days.`}</p>

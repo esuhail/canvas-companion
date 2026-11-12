@@ -13,7 +13,6 @@ import { Digest, UpNext } from './UpNext';
 
 /** The track spans 50–100%. Most course grades live there; lower values pin to the left edge. */
 const LO = 50;
-const TICKS = [60, 70, 80, 90];
 const pos = (percent: number) => Math.min(100, Math.max(0, ((percent - LO) / (100 - LO)) * 100));
 const fmt = (n: number) => (Math.round(n * 100) / 100).toFixed(2).replace(/0$/, '');
 const pts = (n: number) => String(Math.round(n * 100) / 100);
@@ -66,7 +65,7 @@ function Basis({ course, r }: { course: Course; r: Loaded }) {
   const res = r.result;
   switch (res.kind) {
     case 'verified':
-      return <p className="basis verified"><span aria-hidden="true">✓ </span>Verified: our calculation matches Canvas</p>;
+      return <p className="basis verified">Verified. Our calculation matches the total Canvas shows.</p>;
     case 'estimate':
       return (
         <div className="basis estimate">
@@ -257,7 +256,7 @@ function Remaining(props: { course: Course; book: Gradebook; open: OpenItem[]; s
   );
 }
 
-const STATUS = { verified: 'Verified', reported: 'Reported by Canvas', estimate: 'Estimate', none: 'No grade yet' } as const;
+const STATUS = { verified: '', reported: 'Canvas total', estimate: 'Estimate', none: 'No grades yet' } as const;
 
 /** One line for the collapsed row: where the target stands, without opening anything. */
 function hint(r: Loaded, target: number, scenario: Scenario): string {
@@ -289,15 +288,13 @@ function CourseRow({ course, r, target, onTarget, scenario, onScenario, syllabus
           {letter && <span className="letter">{letter}</span>}
           {h.percent === null
             ? <span className="num none">–</span>
-            : <span className="num">{h.basis === 'estimate' && <small className="approx">≈</small>}{fmt(h.percent)}<small>%</small></span>}
+            : <span className="num">{fmt(h.percent)}<small>%</small></span>}
         </span>
         <span className={`track ${h.basis}`} aria-hidden="true">
-          {TICKS.map((t) => <i key={t} className="tick" style={{ left: `${pos(t)}%` }} />)}
           {target >= LO && target <= 100 && <b className="goal" style={{ left: `${pos(target)}%` }} />}
           {h.percent !== null && (
             <>
               <b className="fill" style={{ width: `${pos(h.percent)}%` }} />
-              <b className="pin" style={{ left: `${pos(h.percent)}%` }} />
             </>
           )}
         </span>
@@ -412,10 +409,10 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
       {courses.length > 0 && (
         <nav className="tabs" aria-label="Views">
           <button type="button" aria-pressed={tab === 'next'} onClick={() => setTab('next')}>
-            Up next{allLoaded && <span className="n">{buildQueue(queueEntries, new Date(), done).items.length}</span>}
+            Up next
           </button>
           <button type="button" aria-pressed={tab === 'grades'} onClick={() => setTab('grades')}>
-            Grades<span className="n">{courses.length}</span>
+            Grades
           </button>
         </nav>
       )}
@@ -449,17 +446,9 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
             </ul>
           </section>
         ))}
-        {courses.length > 0 && (
-          <ul className="legend">
-            <li><i className="key verified" />Verified against Canvas</li>
-            <li><i className="key reported" />Reported only</li>
-            <li><i className="key estimate" />Estimate</li>
-            <li><i className="key goal" />Your target</li>
-          </ul>
-        )}
       </main>
       <footer className="about">
-        Read-only. Everything stays in this browser. Not affiliated with Instructure or your school. Version {chrome.runtime.getManifest().version}.
+        Read-only. Your data stays in this browser. Not affiliated with Instructure or your school. Version {chrome.runtime.getManifest().version}
         {source.live && (
           <button className="quiet" title="Copies outcomes and totals. No course or assignment names."
             onClick={async () => { await navigator.clipboard.writeText(resultsText(courses, reports, (c) => targets[key(c)] ?? DEFAULT_TARGET, (c) => scenarios[key(c)] ?? EMPTY_SCENARIO, done)); setCopied(true); }}>
