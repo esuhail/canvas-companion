@@ -62,6 +62,13 @@ try {
 
   // 3. Courses render from live data, across two pages, without the TA course.
   await click(panel, 'Show my courses');
+  // The queue is the first view: one open item, due in 3 days, worth 30% (60% group, half its points).
+  await panel.waitForSelector('.queue li');
+  const queued = await panel.$$eval('.queue li', (els) => els.map((e) => e.innerText.replace(/\s+/g, ' ')));
+  assert.equal(queued.length, 1);
+  assert.match(queued[0], /Item 103 CS 310 Due in 3 days Worth 30% of your grade/);
+  console.log('PASS queue ranks open work from live data');
+  await click(panel, 'Grades');
   await panel.waitForSelector('.course');
   await panel.waitForFunction(() => !/Checking the calculation/.test(document.body.innerText));
   const rows = await panel.$$eval('.course', (els) => els.map((e) => e.dataset.basis + ' | ' + e.innerText.replace(/\s+/g, ' ')));
@@ -97,6 +104,8 @@ try {
 
   // 4. The connection survives a reload, and Disconnect forgets it.
   await panel.reload();
+  await panel.waitForSelector('.tabs');
+  await click(panel, 'Grades');
   await panel.waitForSelector('.course .answer');
   assert.equal(await panel.$eval('#target-1', (e) => e.value), '80', 'target was not remembered');
   await click(panel, 'Disconnect');
@@ -107,6 +116,9 @@ try {
 
   // 5. Sample data.
   await click(panel, 'Look around with sample data');
+  await panel.waitForSelector('.queue li');
+  await panel.screenshot({ path: 'e2e/shots/6-upnext-sample.png', fullPage: true });
+  await click(panel, 'Grades');
   await panel.waitForSelector('.course');
   await panel.screenshot({ path: 'e2e/shots/5-courses-sample.png', fullPage: true });
 

@@ -53,6 +53,27 @@ input {
 .chip::before { content: ''; width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--unknown); flex: none; }
 .chip.live::before { background: var(--reported); border-color: var(--reported); }
 
+/* View switch */
+.tabs { display: flex; gap: 4px; padding: 0 16px 6px; }
+.tabs button { border: 0; background: none; padding: 6px 2px; margin-right: 14px; border-radius: 0; color: var(--slate); border-bottom: 2px solid transparent; }
+.tabs button[aria-pressed='true'] { color: var(--ink); border-bottom-color: var(--ink); }
+
+/* Up next */
+.queue { counter-reset: rank; }
+.queue li { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+.queue li:first-child { border-top: 0; }
+.queue .what { min-width: 0; display: flex; flex-direction: column; }
+.queue a, .queue .title { font-weight: 650; color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
+.queue a:hover { text-decoration: underline; }
+.queue .when { text-align: right; white-space: nowrap; font-weight: 550; font-variant-numeric: tabular-nums; }
+.queue .overdue .when { color: var(--danger); }
+.queue .worth { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 0.86rem; color: var(--slate); margin-top: 4px; }
+.meter { width: 72px; height: 6px; border-radius: 3px; background: var(--mist); flex: none; overflow: hidden; }
+.meter b { display: block; height: 100%; background: var(--cobalt); border-radius: 3px; }
+.courses.empty { padding: 18px 14px; }
+.courses.empty p { margin: 0; color: var(--slate); }
+.upnext .note { margin: 10px 2px 24px; max-width: none; }
+
 /* Course ledger: one sheet, ruled rows. Not cards. */
 .term { padding: 6px 16px 0; }
 .courses { list-style: none; margin: 0; padding: 0 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }

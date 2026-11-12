@@ -4,6 +4,8 @@ import type { Course, Gradebook, GradeReport, GroupLine } from '@/lib/core/model
 import { EMPTY_SCENARIO, openItems, plan, type OpenItem, type Scenario } from '@/lib/core/scenario';
 import { DEFAULT_TARGET, loadScenarios, loadTargets, saveScenario, saveTarget } from '@/lib/settings';
 import type { CourseDataSource } from '@/lib/integration/source';
+import { buildQueue } from '@/lib/core/queue';
+import { UpNext } from './UpNext';
 
 /** The track spans 50–100%. Most course grades live there; lower values pin to the left edge. */
 const LO = 50;
@@ -16,7 +18,10 @@ type Loaded = (GradeReport & { book: Gradebook }) | 'loading' | 'failed';
 
 /** Plain text for a bug report: outcomes and numbers, no course or assignment names. */
 export function resultsText(courses: Course[], reports: Record<string, Loaded>, targetOf: (c: Course) => number, scenarioOf: (c: Course) => Scenario): string {
-  return courses.map((c, i) => {
+  const loaded = courses.flatMap((c) => { const r = reports[c.id]; return r && r !== 'loading' && r !== 'failed' ? [{ course: c, book: r.book }] : []; });
+  const q = buildQueue(loaded, new Date());
+  const queueLine = `queue: ${q.items.length} listed (${q.items.filter((i) => i.overdue).length} overdue, ${q.items.filter((i) => i.impact === null).length} weight unknown), ${q.later} later, ${q.undated} undated`;
+  return queueLine + '\n' + courses.map((c, i) => {
     const r = reports[c.id];
     const head = `course ${i + 1} (${c.weighted ? 'weighted' : 'points'}, canvas total ${c.official.kind})`;
     if (!r || r === 'loading' || r === 'failed') return `${head}: ${r ?? 'loading'}`;
@@ -282,6 +287,7 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
   const { source, courses } = props;
   const [reports, setReports] = useState<Record<string, Loaded>>({});
   const [copied, setCopied] = useState(false);
+  const [tab, setTab] = useState<'next' | 'grades'>('next');
   const [targets, setTargets] = useState<Record<string, number>>({});
   const key = (c: Course) => `${source.label}:${c.id}`;
   const [scenarios, setScenarios] = useState<Record<string, Scenario>>({});
@@ -330,7 +336,18 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
         {source.live && <button className="quiet" onClick={props.onRefresh}>Refresh</button>}
         <button className="quiet" onClick={props.onLeave}>{source.live ? 'Disconnect' : 'Connect Canvas'}</button>
       </header>
-      <main>
+      <nav className="tabs" aria-label="Views">
+        <button type="button" aria-pressed={tab === 'next'} onClick={() => setTab('next')}>Up next</button>
+        <button type="button" aria-pressed={tab === 'grades'} onClick={() => setTab('grades')}>Grades</button>
+      </nav>
+      {tab === 'next' && courses.length > 0 && (
+        <main>
+          <UpNext
+            loading={courses.some((c) => (reports[c.id] ?? 'loading') === 'loading')}
+            entries={courses.flatMap((c) => { const r = reports[c.id]; return r && r !== 'loading' && r !== 'failed' ? [{ course: c, book: r.book }] : []; })} />
+        </main>
+      )}
+      <main hidden={tab === 'next' && courses.length > 0}>
         {courses.length === 0 && (
           <div className="sheet">
             <h1>No courses yet</h1>

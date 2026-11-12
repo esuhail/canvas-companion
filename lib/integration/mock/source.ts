@@ -7,9 +7,20 @@ import type { CourseDataSource } from '../source';
  * real engine instead of faking its output.
  */
 let n = 0;
-const a = (score: number | null, pointsPossible: number): Assignment => ({
-  id: `a${++n}`, name: `Item ${n}`, pointsPossible, score, excused: false, countsTowardTotal: true, pendingReview: false,
-});
+let open = 0;
+const DAY = 86_400_000;
+/** Ungraded sample items get due dates spread around today, so the queue has something to rank. */
+const DUE_IN_DAYS = [-1, 2, 5, 9, 12, 3, 30];
+const NAMES = ['Lab 3', 'Final exam', 'Exam 2', 'Essay 1', 'Essay 2'];
+const a = (score: number | null, pointsPossible: number): Assignment => {
+  const id = `a${++n}`;
+  if (score !== null) return { id, name: `Item ${n}`, pointsPossible, score, excused: false, countsTowardTotal: true, pendingReview: false, dueAt: null, submitted: true };
+  const k = open++;
+  return {
+    id, name: NAMES[k] ?? `Item ${n}`, pointsPossible, score, excused: false, countsTowardTotal: true, pendingReview: false,
+    dueAt: new Date(Date.now() + (DUE_IN_DAYS[k % DUE_IN_DAYS.length] as number) * DAY).toISOString(), submitted: false,
+  };
+};
 const g = (name: string, weight: number, assignments: Assignment[], dropLowest = 0): AssignmentGroup => ({
   id: name, name, weight, dropLowest, dropHighest: 0, neverDrop: [], assignments,
 });
