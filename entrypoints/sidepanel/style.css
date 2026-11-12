@@ -1,0 +1,94 @@
+/* Tokens. Three "basis" colours carry meaning and are used for nothing else:
+   reported/verified (teal), estimate (amber, milestone 2), unknown (grey). */
+:root {
+  --mist: #edf1f4;
+  --paper: #ffffff;
+  --ink: #17222d;
+  --slate: #56677a;
+  --line: #d3dbe3;
+  --cobalt: #2748d8;
+  --reported: #0e7c6b;
+  --estimate: #a8690a;
+  --unknown: #8c97a3;
+  --danger: #b3261e;
+  font-family: 'Instrument Sans Variable', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+  background: var(--mist);
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 300px; }
+h1 { font-size: 1.43rem; line-height: 1.2; font-weight: 650; letter-spacing: -0.01em; margin: 0 0 10px; }
+h2 { font-size: 0.86rem; font-weight: 600; color: var(--slate); margin: 0 0 6px; }
+p { margin: 0 0 12px; max-width: 46ch; }
+.fine, .basis { font-size: 0.86rem; color: var(--slate); }
+.status { padding: 28px 16px; color: var(--slate); }
+.error { color: var(--danger); margin: 6px 0 0; }
+
+.sheet { padding: 24px 16px; }
+
+/* Controls */
+button, input { font: inherit; color: inherit; }
+button {
+  border: 1px solid var(--line); background: var(--paper); border-radius: 6px;
+  padding: 7px 12px; cursor: pointer; font-weight: 550;
+}
+button:hover { border-color: var(--slate); }
+button.primary { background: var(--cobalt); border-color: var(--cobalt); color: #fff; }
+button.primary:hover { background: #1f3bb8; }
+button.quiet { border-color: transparent; background: none; padding: 4px 8px; color: var(--slate); }
+button.quiet:hover { color: var(--ink); background: var(--paper); }
+:focus-visible { outline: 2px solid var(--cobalt); outline-offset: 2px; }
+label { display: block; font-weight: 600; margin: 18px 0 6px; }
+input {
+  width: 100%; padding: 9px 10px; border: 1px solid var(--slate); border-radius: 6px; background: var(--paper);
+}
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+
+/* Top bar */
+.bar { display: flex; align-items: center; gap: 4px; padding: 10px 12px 10px 16px; position: sticky; top: 0; background: var(--mist); z-index: 1; }
+.spacer { flex: 1; }
+.chip { font-weight: 600; font-size: 0.86rem; display: inline-flex; align-items: center; gap: 7px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip::before { content: ''; width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--unknown); flex: none; }
+.chip.live::before { background: var(--reported); border-color: var(--reported); }
+
+/* Course ledger: one sheet, ruled rows. Not cards. */
+.term { padding: 6px 16px 0; }
+.courses { list-style: none; margin: 0; padding: 0 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }
+.course { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; padding: 14px 0 12px; border-top: 1px solid var(--line); }
+.course:first-child { border-top: 0; }
+.who { min-width: 0; display: flex; flex-direction: column; }
+.code { font-weight: 650; }
+.name { color: var(--slate); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.total { text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
+.num { font-size: 1.57rem; line-height: 1.1; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.num small { font-size: 0.6em; font-weight: 500; color: var(--slate); margin-left: 1px; }
+.num.none { color: var(--unknown); }
+.letter { font-weight: 600; color: var(--slate); }
+.basis { grid-column: 1 / -1; margin: 6px 0 0; }
+
+/* The grade track: the one distinctive element. A solid pin means Canvas reported
+   the number. A hatched, empty track means there is no number to show. */
+.track { grid-column: 1 / -1; position: relative; height: 8px; margin-top: 12px; border-radius: 4px; background: var(--mist); }
+.track .tick { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--paper); z-index: 1; }
+.track .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px 0 0 4px; background: color-mix(in srgb, var(--reported) 28%, var(--paper)); }
+.track .pin { position: absolute; top: -4px; width: 4px; height: 16px; margin-left: -2px; border-radius: 2px; background: var(--reported); z-index: 2; }
+.track.hidden, .track.none {
+  background: repeating-linear-gradient(-45deg, var(--mist) 0 4px, var(--line) 4px 5px);
+}
+.track.none { opacity: 0.6; }
+.scale { position: relative; height: 18px; margin: 6px 31px 24px; font-size: 0.79rem; color: var(--slate); font-variant-numeric: tabular-nums; }
+.scale span { position: absolute; transform: translateX(-50%); }
+
+/* Access report */
+.transport { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 10px 0; }
+.transport ul { list-style: none; margin: 0; padding: 0; }
+.check { display: grid; grid-template-columns: 20px 1fr; padding: 3px 0; }
+.check .mark { font-weight: 700; }
+.check.pass .mark { color: var(--reported); }
+.check.fail .mark { color: var(--danger); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .track .pin, .track .fill { transition: left 0.3s ease, width 0.3s ease; }
+}
