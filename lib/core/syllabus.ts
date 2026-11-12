@@ -102,6 +102,19 @@ export function readSyllabus(text: string, ref: Date): Syllabus {
   return { weights, weightSum: sum, items: extractItems(text, ref) };
 }
 
+/** Adds entries from a second reader that the first one missed. Never duplicates, never overrides. */
+export function mergeSyllabus(base: Syllabus, extra: Pick<Syllabus, 'weights' | 'items'>): Syllabus {
+  const weights = [...base.weights];
+  // Only take extra weights when the rules found none: mixing two partial tables is worse than either.
+  if (weights.length === 0) weights.push(...extra.weights);
+  const items = [...base.items];
+  for (const it of extra.items) {
+    if (!items.some((b) => b.date === it.date && similarity(b.title, it.title) >= 0.5)) items.push(it);
+  }
+  items.sort((x, y) => x.date.localeCompare(y.date));
+  return { weights, weightSum: Math.round(weights.reduce((s, w) => s + w.weight, 0) * 100) / 100, items };
+}
+
 // ---- Comparing with Canvas -------------------------------------------------
 
 const SYNONYMS: Record<string, string> = {

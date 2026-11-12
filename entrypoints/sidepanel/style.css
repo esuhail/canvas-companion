@@ -179,6 +179,29 @@ input {
 .breakdown tr.empty { color: var(--unknown); }
 .breakdown .fine { margin: 0; }
 
+.syllabus { grid-column: 1 / -1; margin-top: 8px; font-size: 0.93rem; }
+.syllabus summary { cursor: pointer; color: var(--cobalt); font-weight: 550; width: fit-content; border-radius: 4px; }
+.syllabus h3 { font-size: 0.86rem; font-weight: 600; color: var(--slate); margin: 12px 0 2px; }
+.syllabus .fine { margin: 6px 0 0; }
+.syllabus label { margin: 10px 0 4px; font-weight: 550; }
+.syllabus textarea { width: 100%; font: inherit; padding: 8px; border: 1px solid var(--slate); border-radius: 6px; resize: vertical; }
+.syllabus input[type='file'] { border: 0; padding: 0; font-size: 0.86rem; }
+.syllabus .check { display: flex; align-items: center; gap: 6px; font-weight: 400; }
+.syllabus .check input { width: auto; }
+.syllabus .actions { margin: 10px 0 4px; }
+.rows { list-style: none; margin: 0; padding: 0; }
+.rows li { display: grid; grid-template-columns: 1fr auto; gap: 0 10px; padding: 7px 0 7px 9px; border-top: 1px solid var(--line); border-left: 3px solid var(--line); align-items: start; }
+.rows li.match { border-left-color: var(--reported); }
+.rows li.differs, .rows li.date-differs, .rows li.canvas-unweighted { border-left-color: var(--estimate); }
+.rows li.not-in-canvas { border-left-color: var(--cobalt); }
+.rows .lead { font-weight: 550; min-width: 0; overflow-wrap: anywhere; }
+.rows .count { display: block; font-size: 0.86rem; color: var(--slate); font-weight: 400; }
+.rows .val { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+.rows .acts, .rows > li > button { grid-column: 1 / -1; display: flex; gap: 4px; align-items: center; justify-self: start; }
+.rows button.quiet { padding: 2px 6px 2px 0; }
+.warn { color: var(--estimate); font-weight: 550; margin: 6px 0 0; }
+.syllabus .clear { margin-top: 8px; padding-left: 0; }
+
 .legend { list-style: none; margin: 14px 16px 28px; padding: 0; font-size: 0.86rem; color: var(--slate); }
 .legend li { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
 .key { width: 4px; height: 14px; border-radius: 2px; flex: none; margin: 0 2px; }
@@ -197,3 +220,5 @@ input {
 @media (prefers-reduced-motion: no-preference) {
   .track .pin, .track .fill { transition: left 0.3s ease, width 0.3s ease; }
 }
+
+.about { padding: 4px 18px 24px; font-size: 0.79rem; color: var(--slate); }

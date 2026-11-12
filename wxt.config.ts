@@ -7,8 +7,8 @@ export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   vite: () => ({ define: { __E2E__: JSON.stringify(e2e) } }),
   manifest: {
-    name: 'Canvas companion (working title)',
-    description: 'Read-only view of your own Canvas courses and grades. Nothing leaves your browser.',
+    name: 'Canvas Companion',
+    description: 'Your Canvas grades, checked. What to do next, what you need on what is left, and what your syllabus says that Canvas does not.',
     // sidePanel: the UI. storage: remembers which Canvas you connected. scripting: the
     // in-tab fallback transport. No host access is granted at install time.
     permissions: ['sidePanel', 'storage', 'scripting'],

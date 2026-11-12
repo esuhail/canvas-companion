@@ -1,12 +1,23 @@
-# Canvas companion (working title)
+# Canvas Companion
 
-A Chrome side panel that shows your own Canvas courses and grades. Read-only. No server, no account, no token. Nothing leaves your browser.
+A Chrome side panel for students on Canvas. It recalculates your grades and proves them against Canvas's own totals, ranks what to do next, tells you what you need on what is left, and shows where your syllabus and Canvas disagree.
 
-**Status: milestone 6 of several.** Access is proven on GMU Canvas (both transports). The grade engine handles points-based and weighted courses and checks every result against Canvas's own total. The target-score solver answers "what average do I need on what's left" per course and lists its assumptions. Drop rules ("drop the lowest quiz") are applied the way Canvas applies them. Each course also lists its remaining work: enter what-if scores, or add work that is not in Canvas yet, and the target answer updates. With one item left it answers in points on that item. The **Up next** view ranks open work across all courses by how much each item is worth and how soon it is due, and shows both on every row. Syllabus features are not built yet.
+Read-only. No server, no account, no access token. Nothing leaves your browser. See [PRIVACY.md](PRIVACY.md).
 
-Every course total is shown in one of four states: **verified** (we calculated it and Canvas agrees), **reported** (Canvas's number, which we could not reproduce), **estimate** (calculated, nothing to check it against), or no number at all.
+**Not on the Chrome Web Store.** Public distribution is on hold until the policy questions in [docs/POLICY.md](docs/POLICY.md) are answered. Load it unpacked for your own use.
 
-**Not for public distribution yet.** See [docs/POLICY.md](docs/POLICY.md).
+| Up next | Grades | Syllabus check |
+| --- | --- | --- |
+| ![Up next](docs/screenshots/up-next.png) | ![Grades](docs/screenshots/grades.png) | ![Syllabus check](docs/screenshots/syllabus.png) |
+
+## What it does
+
+- **Verified grades.** The engine recalculates every course total (points-based, weighted, drop rules) and compares it with what Canvas reports. A number is shown as *verified* only when they agree. Otherwise it is labelled *reported by Canvas*, an *estimate* with its assumptions listed, or not shown at all.
+- **Target solver.** Pick a target and it answers in one sentence: the average you need on what is left, that you are already safe, or that the target is out of reach and what the ceiling is. With one item left it answers in points on that item.
+- **What-ifs and missing work.** Type a score for any ungraded item, or add work that is not in Canvas yet, such as an unposted final. Closed items you never submitted count as zero.
+- **Up next.** One list across all courses, ranked by how much of your grade each item is worth and how soon it is due. Both numbers are on every row.
+- **What changed.** New grades, changed grades, moved due dates and new items since your last visit.
+- **Syllabus check.** Upload a PDF or paste text. It reads grade weights and dated work, then shows what matches Canvas, what differs, and what Canvas does not have.
 
 ## Run it
 
@@ -16,40 +27,55 @@ npm run build
 ```
 
 1. Open `chrome://extensions`, turn on Developer mode, click **Load unpacked**, pick `.output/chrome-mv3`.
-2. Sign in to Canvas in a tab and leave it open.
-3. Click the extension's toolbar icon. Enter your Canvas address. Click **Check access**.
+2. Sign in to Canvas in a tab.
+3. Click the extension's toolbar icon, enter your Canvas address, click **Check access**.
 4. Chrome asks to allow that one site. Allow it.
-5. Read the access report. **Copy report** puts a counts-only summary on the clipboard.
 
-`npm run dev` rebuilds on save. **Look around with sample data** works without Canvas.
+**Look around with sample data** works without Canvas. `npm run dev` rebuilds on save.
 
-## Check it
+Disable the extension during proctored exams.
+
+## How it is checked
 
 | Command | What it proves |
 | --- | --- |
-| `npm test` | Grade engine rules, paging, the `while(1);` prefix, the read allowlist, failure classification, mapping |
+| `npm test` | 180+ unit tests: grade rules, drop rules checked against brute force, solver answers fed back through the engine, queue ranking, change detection, syllabus reading, Canvas client behaviour |
 | `npm run typecheck` | Types |
-| `npm run e2e` | Loads the built extension in Chrome against a fake Canvas that rejects tokens and answers only to a session cookie. Checks signed-out, signed-in, both transports, and that only GET requests to two paths were sent. |
+| `npm run e2e` | Loads the built extension in Chrome against a stand-in Canvas that rejects tokens and answers only to a session cookie. Covers access, the queue, the solver, what-ifs, a new grade arriving, and reading a real PDF syllabus. Also asserts that only GET requests to three endpoint kinds were sent. |
+
+CI runs the type check, unit tests and build on every push.
+
+Checked on a real Canvas (George Mason University): access works from extension code, and 4 of 4 courses with a reported total came out verified.
 
 ## How it is put together
 
 ```
-lib/core/            Domain model, grade engine, target solver, scenarios, work queue.
-                     Pure functions. Knows nothing about Canvas, Chrome or React.
+lib/core/            Pure functions. No Canvas, Chrome or React.
+  engine.ts          Course totals, weights, drop rules, comparison with the reported total
+  solver.ts          final(p) = base + slope * p, solved for the target
+  scenario.ts        What-ifs and added work, applied to a copy of the gradebook
+  queue.ts           Impact on the grade weighed against time left
+  digest.ts          Snapshot and diff for "what changed"
+  syllabus.ts        Rule-based syllabus reading and comparison with Canvas
 lib/integration/     Where data comes from. The UI sees only CourseDataSource.
-  canvas/transport   Two ways to make one GET: from the extension, or inside a Canvas tab.
-  canvas/client      Allowlist, paging, prefix stripping, failure classification.
-  canvas/mappers     Canvas JSON -> domain model. Missing fields degrade to "unknown".
-  canvas/probe       The access check.
-  mock/              Sample data covering every UI state.
-entrypoints/         The extension itself: background worker and side panel (React).
+  canvas/            Two GET-only transports, a path allowlist, paging, mapping, the access check
+  files/             PDF and text to plain text, in the browser
+  ai/                Optional on-device model reader (experimental)
+  mock/              Sample data covering every state
+entrypoints/         Background worker and the side panel (React)
 ```
 
-To change how we reach Canvas, add a `Transport` or a new `CourseDataSource`. Nothing in `lib/core` or the UI changes.
+Design choices worth knowing:
 
-## What it does not do
+- **The engine is separate from Canvas.** Integrations map their data into the domain model. To reach Canvas another way, add a `Transport` or a `CourseDataSource`; nothing else changes.
+- **New features are data transformations.** What-ifs, added work and closed items produce a modified copy of the gradebook, and the same engine and solver run on it.
+- **A wrong number is worse than no number.** Anything the engine cannot reproduce is labelled as such, and the solver refuses to project from it.
+- **Syllabus reading is rules first.** Rules are free, repeatable and testable. An on-device model can add to them but never overrides them, and everything read is shown for review with its source.
 
-- No write requests. Transports have no way to send a method or a body.
-- No reads outside the allowlist in `lib/integration/canvas/client.ts`.
-- No background activity. Requests happen only while the panel is open.
-- No stored course data. Only the Canvas address, the working transport, and what you type in (targets, what-if scores, added work) are saved, all in this browser.
+## Limits
+
+- It can only see what Canvas lists. Work graded elsewhere, or not posted yet, has to be added by hand.
+- Grading periods and late-penalty deductions are untested. If a course uses them, its total shows as *reported*, not as a wrong number.
+- The syllabus reader handles common layouts (dotted tables, bullets, "Name: date" lines). Scanned PDFs and unusual tables will be missed.
+- The on-device model path has no automated tests.
+- Chrome and Edge only. Extensions do not run in mobile browsers.

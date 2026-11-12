@@ -61,5 +61,9 @@ export function startFakeCanvas() {
   return new Promise((resolve) => server.listen(0, 'localhost', () =>
     resolve({ origin: `http://localhost:${server.address().port}`, log, close: () => server.close(),
       /** Simulates the instructor grading the open exam in course 1. */
-      gradeOpenExam: (score) => { groups[1][1].assignments[1].submission = sub(score); } })));
+      gradeOpenExam: (score) => {
+        groups[1][1].assignments[1].submission = sub(score);
+        // Canvas recomputes its own total: 90*0.4 + (70+score)/200*60.
+        courses[0].enrollments[0].computed_current_score = Math.round((36 + ((70 + score) / 200) * 60) * 100) / 100;
+      } })));
 }

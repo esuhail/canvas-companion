@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Assignment, AssignmentGroup, Gradebook } from '../lib/core/model';
-import { compareItems, compareWeights, extractItems, extractWeights, likelyGroup, readSyllabus, similarity } from '../lib/core/syllabus';
+import { compareItems, compareWeights, extractItems, extractWeights, likelyGroup, mergeSyllabus, readSyllabus, similarity } from '../lib/core/syllabus';
 
 const REF = new Date(2026, 9, 1); // 1 Oct 2026
 
@@ -125,5 +125,21 @@ describe('compareItems', () => {
   it('suggests a group for work to add', () => {
     expect(likelyGroup('Final Exam', book)).toBe('3');
     expect(likelyGroup('Poster session', book)).toBe('1');
+  });
+});
+
+describe('mergeSyllabus', () => {
+  const base = readSyllabus(DOTTED, REF);
+  it('adds only what the first reader missed', () => {
+    const merged = mergeSyllabus(base, {
+      weights: [{ name: 'Everything', weight: 100, source: 'm' }],
+      items: [{ title: 'Midterm', date: '2026-10-14', source: 'm' }, { title: 'Lab report 2', date: '2026-11-02', source: 'm' }],
+    });
+    expect(merged.weights).toEqual(base.weights);
+    expect(merged.items.map((i) => i.title)).toEqual(['Homework 1', 'Midterm Exam', 'Lab report 2', 'Project proposal', 'Final Exam']);
+  });
+  it('takes the second reader’s weights when the first found none', () => {
+    const merged = mergeSyllabus({ weights: [], weightSum: 0, items: [] }, { weights: [{ name: 'Exams', weight: 60, source: 'm' }, { name: 'Labs', weight: 40, source: 'm' }], items: [] });
+    expect(merged.weightSum).toBe(100);
   });
 });

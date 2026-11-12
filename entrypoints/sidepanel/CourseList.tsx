@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { grade } from '@/lib/core/engine';
 import type { Course, Gradebook, GradeReport, GroupLine } from '@/lib/core/model';
 import { EMPTY_SCENARIO, openItems, plan, type OpenItem, type Scenario } from '@/lib/core/scenario';
-import { DEFAULT_TARGET, loadScenarios, loadSnapshot, loadTargets, saveScenario, saveSnapshot, saveTarget } from '@/lib/settings';
+import { DEFAULT_TARGET, loadScenarios, loadSnapshot, loadSyllabi, loadTargets, saveScenario, saveSnapshot, saveSyllabus, saveTarget } from '@/lib/settings';
 import type { CourseDataSource } from '@/lib/integration/source';
 import { buildQueue } from '@/lib/core/queue';
 import { diff, snapshotOf, type Change, type Snapshot } from '@/lib/core/digest';
+import type { Syllabus } from '@/lib/core/syllabus';
+import { SyllabusPanel } from './SyllabusPanel';
 import { Digest, UpNext } from './UpNext';
 
 /** The track spans 50–100%. Most course grades live there; lower values pin to the left edge. */
@@ -250,8 +252,9 @@ function Remaining(props: { course: Course; book: Gradebook; open: OpenItem[]; s
   );
 }
 
-function CourseRow({ course, r, target, onTarget, scenario, onScenario }: {
+function CourseRow({ course, r, target, onTarget, scenario, onScenario, syllabus, onSyllabus }: {
   course: Course; r: Loaded; target: number; onTarget: (t: number) => void; scenario: Scenario; onScenario: (s: Scenario) => void;
+  syllabus: Syllabus | null; onSyllabus: (s: Syllabus | null) => void;
 }) {
   const h = headline(course, r);
   const letter = course.official.kind === 'reported' && h.basis !== 'estimate' ? course.official.letter : null;
@@ -280,6 +283,9 @@ function CourseRow({ course, r, target, onTarget, scenario, onScenario }: {
       <Basis course={course} r={r} />
       {r !== 'loading' && r !== 'failed' && <Target course={course} r={r} target={target} onTarget={onTarget} scenario={scenario} onScenario={onScenario} />}
       {r !== 'loading' && r !== 'failed' && r.groups.some((g) => g.totalCount > 0) && <Breakdown groups={r.groups} />}
+      {r !== 'loading' && r !== 'failed' && (
+        <SyllabusPanel course={course} book={r.book} saved={syllabus} onSave={onSyllabus} scenario={scenario} onScenario={onScenario} />
+      )}
     </li>
   );
 }
@@ -293,6 +299,12 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
   const key = (c: Course) => `${source.label}:${c.id}`;
   const [scenarios, setScenarios] = useState<Record<string, Scenario>>({});
   useEffect(() => { loadTargets().then(setTargets); loadScenarios().then(setScenarios); }, []);
+  const [syllabi, setSyllabi] = useState<Record<string, Syllabus>>({});
+  useEffect(() => { loadSyllabi().then(setSyllabi); }, []);
+  const setSyllabus = (c: Course, sy: Syllabus | null) => {
+    setSyllabi((prev) => { const next = { ...prev }; if (sy) next[key(c)] = sy; else delete next[key(c)]; return next; });
+    void saveSyllabus(key(c), sy);
+  };
   const setScenario = (c: Course, sc: Scenario) => {
     setScenarios((prev) => ({ ...prev, [key(c)]: sc }));
     void saveScenario(key(c), sc);
@@ -386,7 +398,8 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
               {courses.filter((c) => (c.term ?? '') === term).map((c) => (
                 <CourseRow key={c.id} course={c} r={reports[c.id] ?? 'loading'}
                   target={targets[key(c)] ?? DEFAULT_TARGET} onTarget={(t) => setTarget(c, t)}
-                  scenario={scenarios[key(c)] ?? EMPTY_SCENARIO} onScenario={(sc) => setScenario(c, sc)} />
+                  scenario={scenarios[key(c)] ?? EMPTY_SCENARIO} onScenario={(sc) => setScenario(c, sc)}
+                  syllabus={syllabi[key(c)] ?? null} onSyllabus={(sy) => setSyllabus(c, sy)} />
               ))}
             </ul>
           </section>
@@ -400,6 +413,9 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
           </ul>
         )}
       </main>
+      <footer className="about">
+        Read-only. Everything stays in this browser. Not affiliated with Instructure or your school.
+      </footer>
     </>
   );
 }

@@ -27,7 +27,8 @@ Read-only session access is technically possible. That does not make public dist
 - GET only, enforced by the transport interface.
 - A path allowlist. Quizzes, submissions, conversations and files are not on it.
 - No requests while the panel is closed. A pause between pages.
-- No server. No analytics. No stored course data.
+- No server. No analytics. Nothing leaves the browser.
+- Stored locally only: the Canvas address, your targets, what-if scores and added work, what was read from a syllabus you supplied, and a snapshot of scores and due dates (no names) for "what changed". Disconnect erases all of it.
 - Honest naming in any future listing: independent, not affiliated with Instructure or GMU.
 
 ## Question to send GMU ITS (support@gmu.edu)

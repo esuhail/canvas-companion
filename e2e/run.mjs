@@ -117,6 +117,20 @@ try {
   console.log('PASS a new grade shows up as a change, once');
   await click(panel, 'Grades');
   await panel.waitForSelector('.course .answer');
+
+  // Syllabus: a real PDF is read in the browser and compared with Canvas (Homework 40%, Exams 60%).
+  const upload = await panel.$('#syllabus-1-file');
+  await upload.uploadFile(path.resolve('e2e/fixtures/syllabus.pdf'));
+  await panel.waitForSelector('.course .syllabus .rows li', { timeout: 10000 }).catch(async () => console.log('SYL', await panel.$eval('.course .syllabus', (e) => e.innerText)));
+  const sy = await panel.$$eval('.course:first-child .syllabus .rows li', (els) => els.map((e) => e.className + ' | ' + e.innerText.replace(/\s+/g, ' ')));
+  assert.match(sy[0], /^match \| Homework Same in Canvas \(Homework\) 40%/);
+  assert.match(sy[1], /^differs \| Exams Canvas says 60% \(Exams\) 50%/);
+  assert.match(sy[2], /^not-in-canvas \| Project No matching group in Canvas 10%/);
+  assert.match(sy[3], /^not-in-canvas \| Final Exam Not in Canvas Dec 15/);
+  await click(panel, 'Add to remaining work');
+  await panel.waitForFunction(() => /Final Exam.*Exams, added by you/.test(document.querySelector('.course .plan').textContent));
+  await (await panel.$('.course')).screenshot({ path: 'e2e/shots/7-syllabus.png' });
+  console.log('PASS a PDF syllabus is read, compared with Canvas, and its missing final is added');
   assert.equal(await panel.$eval('#target-1', (e) => e.value), '80', 'target was not remembered');
   await click(panel, 'Disconnect');
   await panel.waitForSelector('#origin');

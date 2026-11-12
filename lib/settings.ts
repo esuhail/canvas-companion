@@ -1,5 +1,6 @@
 import type { Snapshot } from './core/digest';
 import type { Scenario } from './core/scenario';
+import type { Syllabus } from './core/syllabus';
 import type { Transport } from './integration/canvas/transport';
 
 /** The only thing persisted: which Canvas, and which transport worked. No course data. */
@@ -61,3 +62,18 @@ export async function loadSnapshot(sourceKey: string): Promise<Snapshot | null> 
 
 export const saveSnapshot = (sourceKey: string, snapshot: Snapshot) =>
   chrome.storage.local.set({ [`${SNAPSHOT}:${sourceKey}`]: snapshot });
+
+/** What was read from a syllabus the student supplied, keyed by course. The syllabus text itself is not kept. */
+const SYLLABI = 'syllabi';
+
+export async function loadSyllabi(): Promise<Record<string, Syllabus>> {
+  const got = await chrome.storage.local.get(SYLLABI);
+  return (got[SYLLABI] as Record<string, Syllabus> | undefined) ?? {};
+}
+
+export async function saveSyllabus(key: string, syllabus: Syllabus | null): Promise<void> {
+  const all = await loadSyllabi();
+  if (syllabus) all[key] = syllabus;
+  else delete all[key];
+  await chrome.storage.local.set({ [SYLLABI]: all });
+}
