@@ -1,6 +1,6 @@
 import { ago, type Change } from '@/lib/core/digest';
 import type { Course, Gradebook } from '@/lib/core/model';
-import { buildQueue, dueLabel, WINDOW_DAYS } from '@/lib/core/queue';
+import { buildQueue, doneKey, dueLabel, WINDOW_DAYS } from '@/lib/core/queue';
 
 const share = (n: number) => (n >= 10 ? n.toFixed(0) : n.toFixed(1));
 
@@ -44,8 +44,11 @@ export function Digest({ changes, since, onSeen }: { changes: Change[]; since: s
 }
 
 /** One ranked list across every course, with the two inputs to the ranking on each row. */
-export function UpNext({ entries, loading }: { entries: Array<{ course: Course; book: Gradebook }>; loading: boolean }) {
-  const q = buildQueue(entries, new Date());
+export function UpNext({ entries, loading, done, onDone }: {
+  entries: Array<{ course: Course; book: Gradebook }>; loading: boolean;
+  done: ReadonlySet<string>; onDone: (key: string, isDone: boolean) => void;
+}) {
+  const q = buildQueue(entries, new Date(), done);
   const biggest = Math.max(1, ...q.items.map((i) => i.impact ?? 0));
   return (
     <section className="term upnext">
@@ -69,10 +72,27 @@ export function UpNext({ entries, loading }: { entries: Array<{ course: Course; 
               <div className="worth">
                 <span className="meter" aria-hidden="true"><b style={{ width: `${Math.max(3, ((i.impact ?? 0) / biggest) * 100)}%` }} /></span>
                 <span>{i.impact === null ? 'Weight unknown' : `Worth ${share(i.impact)}% of your grade`}</span>
+                <button type="button" className="quiet mark" onClick={() => onDone(doneKey(i.courseId, i.assignmentId), true)}
+                  aria-label={`Mark ${i.name} as done`}>Mark done</button>
               </div>
             </li>
           ))}
         </ol>
+      )}
+      {q.done.length > 0 && (
+        <details className="donelist">
+          <summary>Marked done by you ({q.done.length})</summary>
+          <ul>
+            {q.done.map((i) => (
+              <li key={`${i.courseId}-${i.assignmentId}`}>
+                <span><s>{i.name}</s> <span className="name">{i.courseCode}</span></span>
+                <button type="button" className="quiet" onClick={() => onDone(doneKey(i.courseId, i.assignmentId), false)}
+                  aria-label={`Put ${i.name} back on the list`}>Undo</button>
+              </li>
+            ))}
+          </ul>
+          <p className="fine">Canvas still shows these as ungraded. They drop off this list on their own once graded.</p>
+        </details>
       )}
       <p className="fine note">
         Ranked by how much each item is worth and how soon it is due.

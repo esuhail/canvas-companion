@@ -74,6 +74,15 @@ input {
 .courses.empty p { margin: 0; color: var(--slate); }
 .upnext .note { margin: 10px 2px 24px; max-width: none; }
 
+
+.queue .mark { margin-left: auto; padding: 2px 8px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
+.queue .mark:hover { border-color: var(--slate); }
+.donelist { margin: 10px 2px 0; font-size: 0.93rem; }
+.donelist summary { cursor: pointer; color: var(--slate); font-weight: 550; width: fit-content; border-radius: 4px; }
+.donelist ul { list-style: none; margin: 6px 0; padding: 0; }
+.donelist li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 3px 0; color: var(--slate); }
+.donelist .name { margin-left: 4px; }
+
 /* What changed */
 .digest h2 { color: var(--ink); }
 .changes li { display: flex; flex-direction: column; gap: 1px; padding: 10px 0 10px 12px; border-top: 1px solid var(--line); border-left: 3px solid var(--line); margin-left: -14px; padding-left: 11px; }

@@ -77,3 +77,14 @@ export async function saveSyllabus(key: string, syllabus: Syllabus | null): Prom
   else delete all[key];
   await chrome.storage.local.set({ [SYLLABI]: all });
 }
+
+/** Items the student marked as done themselves (Canvas has no record of them). */
+const DONE = 'done';
+
+export async function loadDone(sourceKey: string): Promise<string[]> {
+  const k = `${DONE}:${sourceKey}`;
+  const got = await chrome.storage.local.get(k);
+  return (got[k] as string[] | undefined) ?? [];
+}
+
+export const saveDone = (sourceKey: string, keys: string[]) => chrome.storage.local.set({ [`${DONE}:${sourceKey}`]: keys });

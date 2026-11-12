@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Assignment, AssignmentGroup, Course, Gradebook } from '../lib/core/model';
-import { buildQueue, dueLabel, impactOf, priorityOf } from '../lib/core/queue';
+import { buildQueue, doneKey, dueLabel, impactOf, priorityOf } from '../lib/core/queue';
 
 const NOW = new Date('2026-11-10T12:00:00Z');
 const inDays = (d: number) => new Date(NOW.getTime() + d * 86_400_000).toISOString();
@@ -81,6 +81,18 @@ describe('past-due items that are not really overdue', () => {
   });
   it('a locked item with nothing to upload is still just waiting on a grade', () => {
     expect(mk({ expectsSubmission: false, lockAt: inDays(-1) })).toMatchObject({ items: [], awaiting: 1, closed: 0 });
+  });
+});
+
+describe('work the student marked as done', () => {
+  const book: Gradebook = { weighted: false, groups: [g('All', 0, [a('takehome', null, 50, 2), a('essay', null, 50, 4)])] };
+  it('leaves the list but stays available to undo', () => {
+    const q = buildQueue([{ course: course('C'), book }], NOW, new Set([doneKey('C', 'takehome')]));
+    expect(q.items.map((i) => i.assignmentId)).toEqual(['essay']);
+    expect(q.done.map((i) => i.assignmentId)).toEqual(['takehome']);
+  });
+  it('a mark for another course does not hide anything', () => {
+    expect(buildQueue([{ course: course('C'), book }], NOW, new Set([doneKey('X', 'takehome')])).items).toHaveLength(2);
   });
 });
 

@@ -35,6 +35,8 @@ export interface Queue {
   awaiting: number;
   /** Past the lock date and never handed in. Nothing can be done about these. */
   closed: number;
+  /** Items the student marked as done themselves. Kept so they can be undone. */
+  done: QueueItem[];
 }
 
 const DAY = 86_400_000;
@@ -71,8 +73,16 @@ export function priorityOf(impact: number | null, daysLeft: number): number {
   return ((impact ?? 0) + 1) * urgency * (daysLeft < 0 ? 2 : 1);
 }
 
-export function buildQueue(entries: Array<{ course: Course; book: Gradebook }>, now: Date): Queue {
+/** Key used for the student's own "done" marks. */
+export const doneKey = (courseId: string, assignmentId: string) => `${courseId}:${assignmentId}`;
+
+export function buildQueue(
+  entries: Array<{ course: Course; book: Gradebook }>,
+  now: Date,
+  marked: ReadonlySet<string> = new Set(),
+): Queue {
   const items: QueueItem[] = [];
+  const done: QueueItem[] = [];
   let undated = 0;
   let later = 0;
   let awaiting = 0;
@@ -92,15 +102,18 @@ export function buildQueue(entries: Array<{ course: Course; book: Gradebook }>, 
         // agrees it is missing. An in-class exam that is simply ungraded is not overdue.
         if (daysLeft < 0 && (a.expectsSubmission === false || a.missing === false)) { awaiting++; continue; }
         const impact = impactOf(book, gi, a);
-        items.push({
+        const item: QueueItem = {
           courseId: course.id, courseCode: course.code, assignmentId: a.id, name: a.name, dueAt: a.dueAt,
           daysLeft, impact, overdue: daysLeft < 0, priority: priorityOf(impact, daysLeft), url: a.url,
-        });
+        };
+        // Canvas cannot know about work handed in on paper or elsewhere. The student can say so.
+        (marked.has(doneKey(course.id, a.id)) ? done : items).push(item);
       }
     });
   }
   items.sort((x, y) => y.priority - x.priority || x.daysLeft - y.daysLeft);
-  return { items, undated, later, awaiting, closed };
+  done.sort((x, y) => x.daysLeft - y.daysLeft);
+  return { items, undated, later, awaiting, closed, done };
 }
 
 /** "Overdue by 2 days", "Due in 5 hours", "Due tomorrow", "Due in 6 days". */

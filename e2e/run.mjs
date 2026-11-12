@@ -67,7 +67,13 @@ try {
   const queued = await panel.$$eval('.queue li', (els) => els.map((e) => e.innerText.replace(/\s+/g, ' ')));
   assert.equal(queued.length, 1);
   assert.match(queued[0], /Item 103 CS 310 Due in 3 days Worth 30% of your grade/);
-  console.log('PASS queue ranks open work from live data');
+  // Work finished outside Canvas: mark it done, it leaves the list; undo brings it back.
+  await click(panel, 'Mark done');
+  await panel.waitForFunction(() => document.querySelectorAll('.queue li').length === 0);
+  await panel.$eval('.donelist', (d) => { d.open = true; });
+  await click(panel, 'Undo');
+  await panel.waitForSelector('.queue li');
+  console.log('PASS queue ranks open work from live data, and done marks work');
   await click(panel, 'Grades');
   await panel.waitForSelector('.course');
   await panel.waitForFunction(() => !/Checking the calculation/.test(document.body.innerText));

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { grade } from '@/lib/core/engine';
 import type { Course, Gradebook, GradeReport, GroupLine } from '@/lib/core/model';
 import { EMPTY_SCENARIO, openItems, plan, type OpenItem, type Scenario } from '@/lib/core/scenario';
-import { DEFAULT_TARGET, loadScenarios, loadSnapshot, loadSyllabi, loadTargets, saveScenario, saveSnapshot, saveSyllabus, saveTarget } from '@/lib/settings';
+import { DEFAULT_TARGET, loadDone, loadScenarios, loadSnapshot, loadSyllabi, loadTargets, saveDone, saveScenario, saveSnapshot, saveSyllabus, saveTarget } from '@/lib/settings';
 import type { CourseDataSource } from '@/lib/integration/source';
 import { buildQueue } from '@/lib/core/queue';
 import { diff, snapshotOf, type Change, type Snapshot } from '@/lib/core/digest';
@@ -20,10 +20,10 @@ const pts = (n: number) => String(Math.round(n * 100) / 100);
 type Loaded = (GradeReport & { book: Gradebook }) | 'loading' | 'failed';
 
 /** Plain text for a bug report: outcomes and numbers, no course or assignment names. */
-export function resultsText(courses: Course[], reports: Record<string, Loaded>, targetOf: (c: Course) => number, scenarioOf: (c: Course) => Scenario): string {
+export function resultsText(courses: Course[], reports: Record<string, Loaded>, targetOf: (c: Course) => number, scenarioOf: (c: Course) => Scenario, done: ReadonlySet<string>): string {
   const loaded = courses.flatMap((c) => { const r = reports[c.id]; return r && r !== 'loading' && r !== 'failed' ? [{ course: c, book: r.book }] : []; });
-  const q = buildQueue(loaded, new Date());
-  const queueLine = `queue: ${q.items.length} listed (${q.items.filter((i) => i.overdue).length} overdue, ${q.items.filter((i) => i.impact === null).length} weight unknown), ${q.later} later, ${q.undated} undated, ${q.awaiting} awaiting grade, ${q.closed} closed`;
+  const q = buildQueue(loaded, new Date(), done);
+  const queueLine = `version ${chrome.runtime.getManifest().version}\nqueue: ${q.items.length} listed (${q.items.filter((i) => i.overdue).length} overdue, ${q.items.filter((i) => i.impact === null).length} weight unknown), ${q.later} later, ${q.undated} undated, ${q.awaiting} awaiting grade, ${q.closed} closed, ${q.done.length} marked done`;
   return queueLine + '\n' + courses.map((c, i) => {
     const r = reports[c.id];
     const head = `course ${i + 1} (${c.weighted ? 'weighted' : 'points'}, canvas total ${c.official.kind})`;
@@ -299,6 +299,16 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
   const key = (c: Course) => `${source.label}:${c.id}`;
   const [scenarios, setScenarios] = useState<Record<string, Scenario>>({});
   useEffect(() => { loadTargets().then(setTargets); loadScenarios().then(setScenarios); }, []);
+  const [done, setDone] = useState<Set<string>>(new Set());
+  useEffect(() => { loadDone(source.label).then((keys) => setDone(new Set(keys))); }, [source]);
+  const markDone = (k: string, isDone: boolean) => {
+    setDone((prev) => {
+      const next = new Set(prev);
+      if (isDone) next.add(k); else next.delete(k);
+      void saveDone(source.label, [...next]);
+      return next;
+    });
+  };
   const [syllabi, setSyllabi] = useState<Record<string, Syllabus>>({});
   useEffect(() => { loadSyllabi().then(setSyllabi); }, []);
   const setSyllabus = (c: Course, sy: Syllabus | null) => {
@@ -365,7 +375,7 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
         <span className="spacer" />
         {source.live && (
           <button className="quiet" title="Copies outcomes and totals. No course or assignment names."
-            onClick={async () => { await navigator.clipboard.writeText(resultsText(courses, reports, (c) => targets[key(c)] ?? DEFAULT_TARGET, (c) => scenarios[key(c)] ?? EMPTY_SCENARIO)); setCopied(true); }}>
+            onClick={async () => { await navigator.clipboard.writeText(resultsText(courses, reports, (c) => targets[key(c)] ?? DEFAULT_TARGET, (c) => scenarios[key(c)] ?? EMPTY_SCENARIO, done)); setCopied(true); }}>
             {copied ? 'Copied' : 'Copy results'}
           </button>
         )}
@@ -381,7 +391,7 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
           {digest && <Digest changes={digest.changes} since={digest.since} onSeen={markSeen} />}
           <UpNext
             loading={courses.some((c) => (reports[c.id] ?? 'loading') === 'loading')}
-            entries={entries} />
+            entries={entries} done={done} onDone={markDone} />
         </main>
       )}
       <main hidden={tab === 'next' && courses.length > 0}>
@@ -414,7 +424,7 @@ export function CourseList(props: { source: CourseDataSource; courses: Course[];
         )}
       </main>
       <footer className="about">
-        Read-only. Everything stays in this browser. Not affiliated with Instructure or your school.
+        Read-only. Everything stays in this browser. Not affiliated with Instructure or your school. Version {chrome.runtime.getManifest().version}.
       </footer>
     </>
   );
