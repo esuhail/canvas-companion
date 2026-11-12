@@ -20,15 +20,65 @@ export interface Course {
   official: OfficialTotal;
 }
 
+/** One gradable item with the student's own result on it. */
+export interface Assignment {
+  id: string;
+  name: string;
+  pointsPossible: number | null;
+  /** Null when ungraded, unposted, or not submitted. Never guess a zero. */
+  score: number | null;
+  excused: boolean;
+  /** False for practice items the instructor left out of the total. */
+  countsTowardTotal: boolean;
+  /** Submitted but waiting on manual grading (e.g. an essay question in a quiz). */
+  pendingReview: boolean;
+}
+
+export interface AssignmentGroup {
+  id: string;
+  name: string;
+  /** Percent of the course grade. Only meaningful when the gradebook is weighted. */
+  weight: number;
+  dropLowest: number;
+  dropHighest: number;
+  assignments: Assignment[];
+}
+
+export interface Gradebook {
+  weighted: boolean;
+  groups: AssignmentGroup[];
+}
+
 /**
- * Contract for the grade engine (milestone 2). Defined now so the UI and the
- * engine agree on the three states before either is written:
- *  - verified: we computed it AND it matches the LMS-reported total.
- *  - estimate: we computed it, but could not check it (or it relies on inputs
- *    the student typed in). `assumptions` says exactly what was assumed.
- *  - insufficient: we refuse to show a number. `missing` says what is needed.
+ * What the engine concludes about a course total. The UI may only show a number
+ * as trustworthy when kind is 'verified'.
+ *  - verified: we computed it AND it equals the LMS-reported total.
+ *  - estimate: we computed it but nothing exists to check it against.
+ *    `assumptions` lists everything the number depends on.
+ *  - mismatch: we computed it and the LMS disagrees. Our number is not shown as
+ *    the grade. This is a diagnostic state: it means the engine lacks a rule.
+ *  - insufficient: no number can be computed. `missing` says what is needed.
  */
 export type GradeResult =
-  | { kind: 'verified'; percent: number; checkedAgainst: number }
+  | { kind: 'verified'; percent: number }
   | { kind: 'estimate'; percent: number; assumptions: string[] }
+  | { kind: 'mismatch'; computed: number; reported: number; hints: string[] }
   | { kind: 'insufficient'; missing: string[] };
+
+/** One row of the "how this was calculated" breakdown. */
+export interface GroupLine {
+  id: string;
+  name: string;
+  /** Null in a points-based course, where groups carry no weight. */
+  weight: number | null;
+  earned: number;
+  possible: number;
+  percent: number | null;
+  gradedCount: number;
+  totalCount: number;
+}
+
+export interface GradeReport {
+  result: GradeResult;
+  groups: GroupLine[];
+}
